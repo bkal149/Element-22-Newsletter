@@ -1,0 +1,14 @@
+# Ignore sensitive environment files
+.env
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore generated newsletter outputs
+newsletter/html/
+newsletter/raw/
+newsletter/trends/
+
+# MacOS system files (safe ignore)
+.DS_Store
