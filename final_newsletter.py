@@ -239,6 +239,74 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
 
 st.title("🗞️ E22 Weekly Newsletter")
 
+st.subheader("🔍 Client Intel Search")
+
+company = st.text_input("Enter a company name to get recent news:", placeholder="e.g. BlackRock, Vanguard")
+
+if company:
+    with st.spinner("Searching recent news about the company..."):
+        try:
+            url = "https://api.tavily.com/search"
+            headers = {"Authorization": f"Bearer {TAVILY_API_KEY}"}
+            payload = {
+                "query": f"Recent strategy, company performance, data, AI, and digital transformation developments at {company} within financial services or tech",
+                "search_depth": "advanced",
+                "topic": "news",
+                "time_range": "week",
+                "max_results": 10,
+                "include_answer": "advanced",
+                "include_content": True,
+                "include_titles": True
+            }
+            response = requests.post(url, json=payload, headers=headers, timeout=15)
+            response.raise_for_status()
+            results = response.json().get("results", [])
+        except Exception as e:
+            st.error(f"❌ Error fetching news: {e}")
+            results = []
+
+    if results:
+        full_text = "\n\n".join([r["content"] for r in results if r.get("content")])
+        link_list = "\n".join([r["url"] for r in results if r.get("url")])
+
+        gpt_prompt = f"""
+You are an industry analyst summarizing the latest strategic developments at {company}. Use only the content provided below.
+
+Summarize key developments, AI and data initiatives, leadership strategy, and consulting relevance for a firm like Element22. Respond in this format:
+
+Summary:
+(Concise 1–2 sentence summary)
+
+Key Highlights:
+- (Insight 1)
+- (Insight 2)
+- (Etc.)
+
+Consulting Relevance:
+- Why this is important for data consultants
+- Questions we might ask this client
+
+Links:
+{link_list}
+
+=== CONTENT START ===
+{full_text}
+=== CONTENT END ===
+        """
+
+        try:
+            summary_response = openai.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": gpt_prompt}]
+            )
+            summary_output = summary_response.choices[0].message.content.strip()
+            st.markdown("### 🧠 GPT Summary")
+            st.markdown(summary_output)
+        except Exception as e:
+            st.error(f"❌ GPT summarization failed: {e}")
+    else:
+        st.info(f"No recent results found for {company}.")
+
 if not os.path.exists(html_path):
     generate_newsletter()
 
