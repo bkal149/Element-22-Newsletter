@@ -3,9 +3,4 @@ requests
 openai
 python-dotenv
 matplotlib
-<<<<<<< HEAD:requirements.txt
 pandas
-=======
-pandas
-python-dotenv
->>>>>>> d95abf7b0124f4330941e3d75883c46e4fd46421:requirements.txt.txt
