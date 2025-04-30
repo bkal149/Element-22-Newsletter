@@ -30,6 +30,6 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add newsletter/html/*.html newsletter/raw/*.txt newsletter/trends/*
-          git commit -m "🤖 Auto-update weekly newsletter"
+          git add newsletter/html newsletter/raw newsletter/trends || true
+          git commit -m "🤖 Auto-update weekly newsletter" || echo "Nothing to commit"
           git push
