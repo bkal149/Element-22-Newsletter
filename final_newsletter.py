@@ -316,7 +316,7 @@ st.subheader("📊 Feedback Poll")
 st.markdown(
     """
     <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSe3jz1gBRprUXjDRUjG0NiGTTLqwNWi8oIO4z153zDkNsWTJA/viewform?embedded=true" 
-        width="1200" height="500" frameborder="0" marginheight="0" marginwidth="0">
+        width="1800" height="500" frameborder="0" marginheight="0" marginwidth="0">
     Loading…
     </iframe>
     """,

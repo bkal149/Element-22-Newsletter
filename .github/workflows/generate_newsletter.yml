@@ -1,0 +1,35 @@
+name: Weekly Newsletter Generator
+
+on:
+  schedule:
+    - cron: '0 10 * * 1'  # Runs every Monday at 10am UTC (5am EST)
+  workflow_dispatch:      # Allows manual triggering from GitHub
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Load .env from GitHub Secrets
+        run: echo "${{ secrets.ENV_FILE }}" > .env
+
+      - name: Run newsletter script
+        run: python final_newsletter.py
+
+      - name: Commit and push updated files
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add newsletter/html/*.html newsletter/raw/*.txt newsletter/trends/*
+          git commit -m "🤖 Auto-update weekly newsletter"
+          git push
