@@ -36,6 +36,12 @@ trend_csv_path = os.path.join(trend_dir, "trend_log.csv")
 def generate_newsletter():
     st.info("📥 Generating this week's newsletter...")
 
+    today = datetime.now().strftime('%B %d, %Y')
+    today_str = datetime.now().strftime('%Y-%m-%d')  # <--- move here
+
+    section_outputs = []
+    all_trend_tags = []
+    
     # Load configs
     with open(os.path.join(base_dir, "config", "e22_config.json"), "r") as f:
         config = json.load(f)
@@ -143,7 +149,6 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
 
     # Save trends
     if all_trend_tags:
-        today_str = datetime.now().strftime('%Y-%m-%d')
         if os.path.exists(trend_csv_path):
             trend_df = pd.read_csv(trend_csv_path)
         else:
