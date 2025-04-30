@@ -36,12 +36,6 @@ trend_csv_path = os.path.join(trend_dir, "trend_log.csv")
 def generate_newsletter():
     st.info("📥 Generating this week's newsletter...")
 
-    today = datetime.now().strftime('%B %d, %Y')
-    today_str = datetime.now().strftime('%Y-%m-%d')  # <--- move here
-
-    section_outputs = []
-    all_trend_tags = []
-    
     # Load configs
     with open(os.path.join(base_dir, "config", "e22_config.json"), "r") as f:
         config = json.load(f)
@@ -149,6 +143,7 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
 
     # Save trends
     if all_trend_tags:
+        today_str = datetime.now().strftime('%Y-%m-%d')
         if os.path.exists(trend_csv_path):
             trend_df = pd.read_csv(trend_csv_path)
         else:
@@ -221,21 +216,14 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
             img_base64 = base64.b64encode(buf.read()).decode("utf-8")
             return f'<img src="data:image/png;base64,{img_base64}" alt="{title}"/>'
 
-        final_output_html += "<div class='section'>"
-
-        if not top_today.empty:
-            final_output_html += f"""
-            <h2>🔥 Top Trends This Week</h2>
-            {plot_to_base64(top_today, "Top Trends This Week", "#1f77b4")}
-            """
-        
-        if not top_overall.empty:
-            final_output_html += f"""
-            <h2>📈 Top Trends Overall</h2>
-            {plot_to_base64(top_overall, "Top Trends Overall", "#2ca02c")}
-            """
-        
-        final_output_html += "</div>"
+        final_output_html += f"""
+        <div class="section">
+          <h2>🔥 Top Trends This Week</h2>
+          {plot_to_base64(top_today, "Top Trends This Week", "#1f77b4")}
+          <h2>📈 Top Trends Overall</h2>
+          {plot_to_base64(top_overall, "Top Trends Overall", "#2ca02c")}
+        </div>
+        """
 
     final_output_html += """
     </body>
@@ -319,7 +307,8 @@ Links:
     else:
         st.info(f"No recent results found for {company}.")
 
-generate_newsletter()
+if not os.path.exists(html_path):
+    generate_newsletter()
 
 st.markdown("---")
 st.subheader("📊 Feedback Poll")
