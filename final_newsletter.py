@@ -310,6 +310,19 @@ Links:
 if not os.path.exists(html_path):
     generate_newsletter()
 
+st.markdown("---")
+st.subheader("📊 Feedback Poll")
+
+st.markdown(
+    """
+    <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSe3jz1gBRprUXjDRUjG0NiGTTLqwNWi8oIO4z153zDkNsWTJA/viewform?embedded=true" 
+        width="640" height="1805" frameborder="0" marginheight="0" marginwidth="0">
+    Loading…
+    </iframe>
+    """,
+    unsafe_allow_html=True
+)
+
 st.subheader("📬 This Week's Newsletter")
 
 with open(html_path, "r", encoding="utf-8") as f:
