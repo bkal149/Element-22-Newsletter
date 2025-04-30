@@ -221,14 +221,21 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
             img_base64 = base64.b64encode(buf.read()).decode("utf-8")
             return f'<img src="data:image/png;base64,{img_base64}" alt="{title}"/>'
 
-        final_output_html += f"""
-        <div class="section">
-          <h2>🔥 Top Trends This Week</h2>
-          {plot_to_base64(top_today, "Top Trends This Week", "#1f77b4")}
-          <h2>📈 Top Trends Overall</h2>
-          {plot_to_base64(top_overall, "Top Trends Overall", "#2ca02c")}
-        </div>
-        """
+        final_output_html += "<div class='section'>"
+
+        if not top_today.empty:
+            final_output_html += f"""
+            <h2>🔥 Top Trends This Week</h2>
+            {plot_to_base64(top_today, "Top Trends This Week", "#1f77b4")}
+            """
+        
+        if not top_overall.empty:
+            final_output_html += f"""
+            <h2>📈 Top Trends Overall</h2>
+            {plot_to_base64(top_overall, "Top Trends Overall", "#2ca02c")}
+            """
+        
+        final_output_html += "</div>"
 
     final_output_html += """
     </body>
