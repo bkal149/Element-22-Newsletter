@@ -81,7 +81,7 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
         """
         try:
             response = openai.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4.0",
                 messages=[{"role": "user", "content": prompt}]
             )
             raw_output = response.choices[0].message.content.strip()
@@ -108,7 +108,7 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
 
         try:
             response = openai.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4.0",
                 messages=[{"role": "user", "content": prompt}]
             )
             return response.choices[0].message.content.strip()
@@ -296,7 +296,7 @@ Links:
 
         try:
             summary_response = openai.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4.0",
                 messages=[{"role": "user", "content": gpt_prompt}]
             )
             summary_output = summary_response.choices[0].message.content.strip()
