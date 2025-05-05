@@ -45,6 +45,8 @@ def generate_newsletter():
         SECTION_PROMPTS = json.load(f)
 
     today = datetime.now().strftime('%B %d, %Y')
+    today_str = datetime.now().strftime('%Y-%m-%d')
+    
     section_outputs = []
     all_trend_tags = []
 
