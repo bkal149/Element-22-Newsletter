@@ -2,43 +2,40 @@ name: Weekly Newsletter Generator
 
 on:
   schedule:
-    - cron: '0 10 * * 1'  # Every Monday at 10am UTC (5am EST)
-  workflow_dispatch:      # Manual trigger via GitHub UI
+    - cron: '0 10 * * 1'  # Runs every Monday at 10am UTC (5am EST)
+  workflow_dispatch:      # Allows manual triggering from GitHub
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
     steps:
-      - name: 📥 Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: 🐍 Set up Python 3.11
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: 3.11
 
-      - name: 📦 Install dependencies
+      - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: 📅 Set WEEK_ID environment variable
-        run: echo "WEEK_ID=$(date +'%G-W%V')" >> $GITHUB_ENV
-
-      - name: 🧠 Run newsletter script
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+      - name: Run newsletter script
         run: python final_newsletter.py
 
-      - name: 📤 Commit and push newsletter outputs
-        run: | 
+      - name: Commit and push newsletter outputs
+        run: |
           git config user.name "e22-newsletter-bot"
           git config user.email "bot@element22.com"
           git pull --rebase origin main
 
-          git add newsletter/html/*.html || true
-          git add newsletter/raw/*.txt || true
-          git add newsletter/trends/trend_log.csv || true
+          git add newsletter/html/*.html
+          git add newsletter/raw/*.txt
+          git add newsletter/trends/trend_log.csv
 
-          git commit -m "📬 Add automated newsletter output for $WEEK_ID" || echo "No changes to commit"
+          git commit -m "📬 Add automated newsletter output for ${{ env.WEEK_ID }}" || echo "Nothing to commit"
           git push
