@@ -28,12 +28,13 @@ jobs:
         run: python final_newsletter.py
 
       - name: Commit and push newsletter outputs
-        run: |
+        run: | 
           git config user.name "e22-newsletter-bot"
-          git config user.email "bot@element22.com"
-          git pull --rebase origin main
+          git config user.email "bot@element22.com" 
+      
           git add newsletter/html/*.html
           git add newsletter/raw/*.txt
           git add newsletter/trends/trend_log.csv
-          git commit -m "📬 Add automated newsletter output"
+      
+          git commit -m "📬 Add automated newsletter output for $(date +'%Y-%m-%d')" || echo "No changes to commit"
           git push
