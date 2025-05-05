@@ -2,47 +2,43 @@ name: Weekly Newsletter Generator
 
 on:
   schedule:
-    - cron: '0 10 * * 1'  # Runs every Monday at 10am UTC (5am EST)
-  workflow_dispatch:      # Allows manual triggering from GitHub
+    - cron: '0 10 * * 1'  # Every Monday at 10am UTC (5am EST)
+  workflow_dispatch:      # Manual trigger via GitHub UI
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
+      - name: 📥 Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: 🐍 Set up Python 3.11
         uses: actions/setup-python@v4
         with:
           python-version: 3.11
 
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Load .env from GitHub Secrets
-        run: echo "${{ secrets.ENV_FILE }}" > .env
+      - name: 📅 Set WEEK_ID environment variable
+        run: echo "WEEK_ID=$(date +'%G-W%V')" >> $GITHUB_ENV
 
-      - name: Run newsletter script
+      - name: 🧠 Run newsletter script
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
         run: python final_newsletter.py
-        
-      - name: Commit and push newsletter outputs
+
+      - name: 📤 Commit and push newsletter outputs
         run: | 
           git config user.name "e22-newsletter-bot"
-          git config user.email "bot@element22.com" 
+          git config user.email "bot@element22.com"
           git pull --rebase origin main
-        
-          git add newsletter/html/*.html
-          git add newsletter/raw/*.txt
-          git add newsletter/trends/trend_log.csv
-        
-          git commit -m "📬 Add automated newsletter output for ${{ env.WEEK_ID }}"
-          git push  
 
-      - name: Commit and push updated files
-        run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add newsletter/html newsletter/raw newsletter/trends || true
-          git commit -m "🤖 Auto-update weekly newsletter" || echo "Nothing to commit"
+          git add newsletter/html/*.html || true
+          git add newsletter/raw/*.txt || true
+          git add newsletter/trends/trend_log.csv || true
+
+          git commit -m "📬 Add automated newsletter output for $WEEK_ID" || echo "No changes to commit"
           git push
