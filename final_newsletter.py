@@ -179,15 +179,6 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
       <hr>
     """
 
-    for section, summary in section_outputs:
-        summary_html = summary.replace("\n", "<br>")
-        final_output_html += f"""
-        <div class="section">
-          <h2>{section}</h2>
-          <p>{summary_html}</p>
-        </div>
-        """
-
     # Embed charts
     if os.path.exists(trend_csv_path):
         trend_df = pd.read_csv(trend_csv_path)
@@ -226,6 +217,15 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
           {plot_to_base64(top_today, "Top Trends This Week", "#1f77b4")}
           <h2>📈 Top Trends Overall</h2>
           {plot_to_base64(top_overall, "Top Trends Overall", "#2ca02c")}
+        </div>
+        """
+
+    for section, summary in section_outputs:
+        summary_html = summary.replace("\n", "<br>")
+        final_output_html += f"""
+        <div class="section">
+          <h2>{section}</h2>
+          <p>{summary_html}</p>
         </div>
         """
 
