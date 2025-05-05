@@ -3,7 +3,6 @@ import os
 import json
 import requests
 from datetime import datetime
-from dotenv import load_dotenv
 import openai
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -14,9 +13,12 @@ from io import BytesIO
 st.set_page_config(page_title="E22 Weekly Brief", layout="wide")
 
 # === SETUP ===
-load_dotenv("env")
-openai.api_key = os.getenv("OPENAI_API_KEY")
-TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
+if not TAVILY_API_KEY:
+    raise RuntimeError("❌ Tavily API key not found in environment variables.")
+TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
+if not TAVILY_API_KEY:
+    raise RuntimeError("❌ Tavily API key not found in environment variables.")
 
 year, week_num, _ = datetime.now().isocalendar()
 base_dir = os.path.dirname(os.path.abspath(__file__))
