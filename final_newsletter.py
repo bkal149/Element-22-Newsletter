@@ -138,7 +138,7 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
             summary_text = bolden_labels(summary_text)
             return summary_text, used_links
         except Exception as e:
-            return f"(Error summarizing {section_name}: {e})"
+            return f"(Error summarizing {section_name}: {e})", []
 
     manual_order = [
     "Market & Macro Watch",
