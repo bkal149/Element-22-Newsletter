@@ -245,6 +245,7 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
 # === MAIN EXECUTION ===
 
 st.title("🗞️ E22 Weekly Newsletter")
+st.warning(f"Client Intel section Tavily key: {TAVILY_API_KEY}")
 
 st.subheader("🔍 Client Intel Search")
 
