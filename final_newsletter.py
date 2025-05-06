@@ -245,14 +245,29 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
             img_base64 = base64.b64encode(buf.read()).decode("utf-8")
             return f'<img src="data:image/png;base64,{img_base64}" alt="{title}"/>'
 
-        def plot_market_chart(ticker, label, color):
-            import yfinance as yf
-            data = yf.download(ticker, start=f"{datetime.now().year}-01-01", interval="1d")
-            fig, ax = plt.subplots()
-            data["Close"].plot(ax=ax, color=color)
-            ax.set_title(f"{label} (YTD)")
-            ax.set_ylabel("Price")
+        def plot_combined_market_chart():
+            tickers = {
+                "^GSPC": "S&P 500",
+                "^IXIC": "NASDAQ",
+                "BTC-USD": "Bitcoin"
+            }
+            colors = {
+                "^GSPC": "#3366cc",
+                "^IXIC": "#dc3912",
+                "BTC-USD": "#ff9900"
+            }
+        
+            fig, ax = plt.subplots(figsize=(10, 5))
+            for ticker, label in tickers.items():
+                data = yf.download(ticker, start=f"{datetime.now().year}-01-01", interval="1d", progress=False)
+                if not data.empty:
+                    normalized = data["Close"] / data["Close"].iloc[0] * 100
+                    normalized.plot(ax=ax, label=label, color=colors[ticker])
+        
+            ax.set_title("YTD Performance of Major Indexes")
+            ax.set_ylabel("Normalized Price (Start = 100)")
             ax.set_xlabel("Date")
+            ax.legend()
             plt.tight_layout()
         
             buf = BytesIO()
@@ -260,7 +275,8 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
             plt.close(fig)
             buf.seek(0)
             img_base64 = base64.b64encode(buf.read()).decode("utf-8")
-            return f'<img src="data:image/png;base64,{img_base64}" alt="{label}"/>'
+            return f'<img src="data:image/png;base64,{img_base64}" alt="Market Chart"/>'
+
 
     final_output_html += f"""
         <div class="section" id="trends">
@@ -288,12 +304,8 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
         if i == 0 and section == "Market & Macro Watch":
             market_charts_html = f"""
             <div style="margin-bottom: 30px;">
-              <h3>📊 Key Market Charts</h3>
-              <div style="display: flex; justify-content: space-between; gap: 20px;">
-                <div style="flex: 1;">{plot_market_chart("^GSPC", "S&P 500", "#3366cc")}</div>
-                <div style="flex: 1;">{plot_market_chart("^IXIC", "NASDAQ", "#dc3912")}</div>
-                <div style="flex: 1;">{plot_market_chart("BTC-USD", "Bitcoin", "#ff9900")}</div>
-              </div>
+              <h3>📊 Key Market Chart</h3>
+              {plot_combined_market_chart()}
             </div>
             """
             
