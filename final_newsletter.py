@@ -17,10 +17,10 @@ TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Debugging aid (optional: remove later)
-if not TAVILY_API_KEY:
-    st.error("❌ Tavily API key not found in environment variables. Check GitHub Secrets.")
-else:
-    st.success(f"✅ Tavily API key loaded successfully: {TAVILY_API_KEY}")
+# if not TAVILY_API_KEY:
+#     st.error("❌ Tavily API key not found in environment variables. Check GitHub Secrets.")
+# else:
+#     st.success(f"✅ Tavily API key loaded successfully")
 
     
 year, week_num, _ = datetime.now().isocalendar()
@@ -245,7 +245,6 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
 # === MAIN EXECUTION ===
 
 st.title("🗞️ E22 Weekly Newsletter")
-st.warning(f"Client Intel section Tavily key: {TAVILY_API_KEY}")
 
 st.subheader("🔍 Client Intel Search")
 
