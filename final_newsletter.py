@@ -320,8 +320,7 @@ Links:
     else:
         st.info(f"No recent results found for {company}.")
 
-if not os.path.exists(html_path):
-    generate_newsletter()
+generate_newsletter()
 
 st.markdown("---")
 st.subheader("📊 Feedback Poll")
