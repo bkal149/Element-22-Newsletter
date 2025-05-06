@@ -233,6 +233,7 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
             series.plot(kind="bar", ax=ax, color=color)
             ax.set_title(title)
             ax.set_ylabel("Mentions")
+            ax.set_xlabel("Tag")
             ax.set_xticklabels(series.index, rotation=45, ha="right")
             plt.tight_layout()
 
@@ -243,12 +244,19 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
             img_base64 = base64.b64encode(buf.read()).decode("utf-8")
             return f'<img src="data:image/png;base64,{img_base64}" alt="{title}"/>'
 
-        final_output_html += f"""
-        <div class="section">
-          <h2>🔥 Top Trends This Week</h2>
-          {plot_to_base64(top_today, "Top Trends This Week", "#1f77b4")}
-          <h2>📈 Top Trends Overall</h2>
-          {plot_to_base64(top_overall, "Top Trends Overall", "#2ca02c")}
+       final_output_html += f"""
+        <div class="section" id="trends">
+          <h2 style="text-transform: uppercase;">🔥 Top Trends</h2>
+          <div style="display: flex; justify-content: space-between; gap: 20px;">
+            <div style="flex: 1;">
+              <h3>Top Trends This Week</h3>
+              {plot_to_base64(top_today, "Top Trends This Week", "#1f77b4")}
+            </div>
+            <div style="flex: 1;">
+              <h3>Top Trends Overall</h3>
+              {plot_to_base64(top_overall, "Top Trends Overall", "#2ca02c")}
+            </div>
+          </div>
         </div>
         """
 
