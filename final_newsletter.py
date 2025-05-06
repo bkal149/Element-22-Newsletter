@@ -356,3 +356,35 @@ st.components.v1.html(
     height=1600,
     scrolling=True
 )
+
+# === HTML Archive Section ===
+st.subheader("📚 Past Newsletters")
+
+if os.path.exists(html_dir):
+    html_files = sorted(
+        [f for f in os.listdir(html_dir) if f.endswith(".html")],
+        reverse=True
+    )
+
+    for html_file in html_files:
+        if html_file == f"{year}-W{week_num}.html":
+            continue  # Skip current issue
+
+        week_label = html_file.replace(".html", "")
+        file_path = os.path.join(html_dir, html_file)
+
+        with open(file_path, "r", encoding="utf-8") as f:
+            archived_html = f.read()
+
+        with st.expander(f"📅 {week_label}"):
+            st.components.v1.html(
+                f"""
+                <div style="background-color: white; padding: 20px;">
+                    {archived_html}
+                </div>
+                """,
+                height=1000,
+                scrolling=True
+            )
+else:
+    st.info("No past issues found.")
