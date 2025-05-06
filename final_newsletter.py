@@ -133,7 +133,7 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
 
         if texts:
             summary = summarize_section(section, texts, links, titles, today)
-            section_outputs.append((section, summary))
+            section_outputs.append((section, summary, links))
             # Trend tag extraction
             trends = extract_trends(summary)
             all_trend_tags.extend(trends)
@@ -223,12 +223,18 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
         </div>
         """
 
-    for section, summary in section_outputs:
+    for section, summary, links in section_outputs:
         summary_html = summary.replace("\n", "<br>")
+        links_html = "<br>".join([f'<a href="{url}" target="_blank">{url}</a>' for url in links])
+    
         final_output_html += f"""
         <div class="section">
           <h2>{section}</h2>
           <p>{summary_html}</p>
+          <div class="links" style="margin-top: 10px;">
+            <strong>Article Links:</strong><br>
+            {links_html}
+          </div>
         </div>
         """
 
