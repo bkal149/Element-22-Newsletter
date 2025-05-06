@@ -431,12 +431,13 @@ st.subheader("📊 Feedback Poll")
 st.markdown(
     """
     <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSe3jz1gBRprUXjDRUjG0NiGTTLqwNWi8oIO4z153zDkNsWTJA/viewform?embedded=true" 
-        width="1800" height="500" frameborder="0" marginheight="0" marginwidth="0">
+        width="1200" height="500" frameborder="0" marginheight="0" marginwidth="0">
     Loading…
     </iframe>
     """,
     unsafe_allow_html=True
 )
+
 
 st.markdown('<a name="newsletter"></a>', unsafe_allow_html=True)
 st.subheader("📬 This Week's Newsletter")
