@@ -172,7 +172,7 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
             
     # Save raw text
     output_text = f"E22 Weekly Brief – {today}\n\n"
-    for section, summary in section_outputs:
+    for section, summary, used_links in section_outputs:
         output_text += f"===== {section} =====\n\n{summary}\n\n" + "-"*80 + "\n\n"
 
     with open(txt_path, "w", encoding="utf-8") as f:
