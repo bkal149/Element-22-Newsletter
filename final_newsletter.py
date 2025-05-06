@@ -104,7 +104,8 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
         if len(combined_text) > 48000:
             combined_text = combined_text[:48000]
 
-        sample_citations = "\n".join([f"- {title} ({link})" for title, link in zip(article_titles[:3], article_links[:3])])
+        sample_citations = "\n".join([f"[{i+1}] {title}" for i, title in enumerate(article_titles[:3])])
+        used_links = article_links[:3]
         prompt_template = SECTION_PROMPTS.get(section_name, SECTION_PROMPTS.get("default", ""))
         prompt = prompt_template.format(
             section_name=section_name,
@@ -118,7 +119,7 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
                 model="gpt-4",
                 messages=[{"role": "user", "content": prompt}]
             )
-            return response.choices[0].message.content.strip()
+            return response.choices[0].message.content.strip(), used_links
         except Exception as e:
             return f"(Error summarizing {section_name}: {e})"
 
@@ -132,8 +133,8 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
         titles = [r["title"] for r in results if r.get("content")]
 
         if texts:
-            summary = summarize_section(section, texts, links, titles, today)
-            section_outputs.append((section, summary, links))
+            summary, used_links = summarize_section(section, texts, links, titles, today)
+            section_outputs.append((section, summary, used_links))
             # Trend tag extraction
             trends = extract_trends(summary)
             all_trend_tags.extend(trends)
@@ -223,9 +224,24 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
         </div>
         """
 
-    for section, summary, links in section_outputs:
+    for section, summary, references in section_outputs:
         summary_html = summary.replace("\n", "<br>")
-        links_html = "<br>".join([f'<a href="{url}" target="_blank">{url}</a>' for url in links])
+        
+        # This is the line you're asking about:
+        references_html = "<br>".join(
+            [f"[{i+1}] <a href='{url}' target='_blank'>{url}</a>" for i, url in enumerate(references)]
+        )
+    
+        final_output_html += f"""
+        <div class="section" id="{section.lower().replace(' ', '-')}">
+          <h2>{section}</h2>
+          <p>{summary_html}</p>
+          <div class="links" style="margin-top: 10px;">
+            <strong>References:</strong><br>
+            {references_html}
+          </div>
+        </div>
+        """
     
         final_output_html += f"""
         <div class="section">
