@@ -296,9 +296,9 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
               </div>
             </div>
             """
-    
+            
         final_output_html += f"""
-        <div class="section" id="{section.lower().replace(' ', '-')}">
+        <div class='section' id='{section.lower().replace(' ', '-')}'>
           <h2>{section}</h2>
           {market_charts_html}
           <p>{summary_html}</p>
@@ -308,7 +308,6 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
           </div>
         </div>
         """
-
 
     final_output_html += """
     </body>
@@ -407,12 +406,13 @@ Links:
     else:
         st.info(f"No recent results found for {company}.")
 
-@st.cache_data
+# @st.cache_data
 def check_or_generate_newsletter():
-    if not os.path.exists(html_path):
-        generate_newsletter()
+    # Force regenerate for manual testing
+    generate_newsletter()
 
 check_or_generate_newsletter()
+
 
 st.markdown("---")
 st.markdown('<a name="feedback-poll"></a>', unsafe_allow_html=True)
