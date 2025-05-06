@@ -82,14 +82,14 @@ def generate_newsletter():
 
     def bolden_labels(text):
         label_patterns = [
-            r"(?<=\n|^)Summary:",
-            r"(?<=\n|^)Full Brief:",
-            r"(?<=\n|^)Key Highlights:",
-            r"(?<=\n|^)Consulting Relevance:",
-            r"(?<=\n|^)Links:"
+            r"^Summary:",
+            r"^Full Brief:",
+            r"^Key Highlights:",
+            r"^Consulting Relevance:",
+            r"^Links:"
         ]
         for pattern in label_patterns:
-            text = re.sub(pattern, lambda m: f"**{m.group(0).strip()}**", text)
+            text = re.sub(pattern, lambda m: f"**{m.group(0).strip()}**", text, flags=re.MULTILINE)
         return text
 
     def extract_trends(text):
@@ -247,7 +247,7 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
 
         def plot_market_chart(ticker, label, color):
             import yfinance as yf
-            data = yf.download(ticker, period="5d", interval="1d")
+            data = yf.download(ticker, start=f"{datetime.now().year}-01-01", interval="1d")
             fig, ax = plt.subplots()
             data["Close"].plot(ax=ax, color=color)
             ax.set_title(f"{label} (5-Day)")
