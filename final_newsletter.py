@@ -13,12 +13,14 @@ from io import BytesIO
 st.set_page_config(page_title="E22 Weekly Brief", layout="wide")
 
 # === SETUP ===
-# Don't use load_dotenv — GitHub Actions sets env vars directly
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+# Debugging aid (optional: remove later)
 if not TAVILY_API_KEY:
-    raise RuntimeError("❌ Tavily API key not found in environment variables.")
+    st.error("❌ Tavily API key not found in environment variables. Check GitHub Secrets.")
+else:
+    st.success("✅ Tavily API key loaded successfully.")
     
 year, week_num, _ = datetime.now().isocalendar()
 base_dir = os.path.dirname(os.path.abspath(__file__))
