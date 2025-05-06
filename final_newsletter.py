@@ -7,6 +7,7 @@ import openai
 import pandas as pd
 import matplotlib.pyplot as plt
 import base64
+import yfinance as yf
 from io import BytesIO
 
 # === FIRST STREAMLIT COMMAND ===
@@ -244,7 +245,24 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
             img_base64 = base64.b64encode(buf.read()).decode("utf-8")
             return f'<img src="data:image/png;base64,{img_base64}" alt="{title}"/>'
 
-       final_output_html += f"""
+        def plot_market_chart(ticker, label, color):
+            import yfinance as yf
+            data = yf.download(ticker, period="5d", interval="1d")
+            fig, ax = plt.subplots()
+            data["Close"].plot(ax=ax, color=color)
+            ax.set_title(f"{label} (5-Day)")
+            ax.set_ylabel("Price")
+            ax.set_xlabel("Date")
+            plt.tight_layout()
+        
+            buf = BytesIO()
+            plt.savefig(buf, format="png")
+            plt.close(fig)
+            buf.seek(0)
+            img_base64 = base64.b64encode(buf.read()).decode("utf-8")
+            return f'<img src="data:image/png;base64,{img_base64}" alt="{label}"/>'
+
+    final_output_html += f"""
         <div class="section" id="trends">
           <h2 style="text-transform: uppercase;">🔥 Top Trends</h2>
           <div style="display: flex; justify-content: space-between; gap: 20px;">
@@ -260,17 +278,29 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
         </div>
         """
 
-    for section, summary, references in section_outputs:
+    for i, (section, summary, references) in enumerate(section_outputs):
         summary_html = summary.replace("\n", "<br>")
-        
-        # This is the line you're asking about:
         references_html = "<br>".join(
             [f"[{i+1}] <a href='{url}' target='_blank'>{url}</a>" for i, url in enumerate(references)]
         )
     
+        market_charts_html = ""
+        if i == 0 and section == "Market & Macro Watch":
+            market_charts_html = f"""
+            <div style="margin-bottom: 30px;">
+              <h3>📊 Key Market Charts</h3>
+              <div style="display: flex; justify-content: space-between; gap: 20px;">
+                <div style="flex: 1;">{plot_market_chart("^GSPC", "S&P 500", "#3366cc")}</div>
+                <div style="flex: 1;">{plot_market_chart("^IXIC", "NASDAQ", "#dc3912")}</div>
+                <div style="flex: 1;">{plot_market_chart("BTC-USD", "Bitcoin", "#ff9900")}</div>
+              </div>
+            </div>
+            """
+    
         final_output_html += f"""
         <div class="section" id="{section.lower().replace(' ', '-')}">
           <h2>{section}</h2>
+          {market_charts_html}
           <p>{summary_html}</p>
           <div class="links" style="margin-top: 10px;">
             <strong>References:</strong><br>
@@ -278,6 +308,7 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
           </div>
         </div>
         """
+
 
     final_output_html += """
     </body>
