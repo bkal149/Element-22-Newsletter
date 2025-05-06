@@ -252,21 +252,27 @@ if company:
         try:
             url = "https://api.tavily.com/search"
             headers = {"Authorization": f"Bearer {TAVILY_API_KEY}"}
+            query = f"{company} strategy OR performance OR digital transformation"
+
             payload = {
-                "query": f"Recent strategy, company performance, data, AI, and digital transformation developments at {company} within financial services or tech",
-                "search_depth": "advanced",
-                "topic": "news",
+                "query": query,
+                "search_depth": "basic",  # simplified for reliability
                 "time_range": "week",
                 "max_results": 10,
-                "include_answer": "advanced",
                 "include_content": True,
                 "include_titles": True
             }
-            response = requests.post(url, json=payload, headers=headers, timeout=15)
+
+            response = requests.post(url, json=payload, headers=headers, timeout=20)
             response.raise_for_status()
             results = response.json().get("results", [])
+
+        except requests.exceptions.HTTPError as e:
+            error_msg = e.response.text if e.response else str(e)
+            st.error(f"❌ Tavily query failed ({e.response.status_code}): {error_msg}")
+            results = []
         except Exception as e:
-            st.error(f"❌ Error fetching news: {e}")
+            st.error(f"❌ Unexpected error fetching Tavily results: {e}")
             results = []
 
     if results:
