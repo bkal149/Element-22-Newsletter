@@ -323,13 +323,11 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
 
 st.title("🗞️ E22 Weekly Newsletter")
 
-st.markdown("""
-### 🧭 Contents
-- [🔍 Client Intel Search](#client-intel)
-- [📊 Feedback Poll](#feedback-poll)
-- [📬 This Week's Newsletter](#newsletter)
-- [📚 Past Newsletters](#archive)
-""", unsafe_allow_html=True)
+st.sidebar.title("🧭 Contents")
+st.sidebar.markdown("[🔍 Client Intel Search](#client-intel)", unsafe_allow_html=True)
+st.sidebar.markdown("[📊 Feedback Poll](#feedback-poll)", unsafe_allow_html=True)
+st.sidebar.markdown("[📬 This Week's Newsletter](#newsletter)", unsafe_allow_html=True)
+st.sidebar.markdown("[📚 Past Newsletters](#archive)", unsafe_allow_html=True)
 
 st.markdown('<a name="client-intel"></a>', unsafe_allow_html=True)
 st.subheader("🔍 Client Intel Search")
