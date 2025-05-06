@@ -407,7 +407,8 @@ Links:
     else:
         st.info(f"No recent results found for {company}.")
 
-generate_newsletter()
+if not os.path.exists(html_path):
+    generate_newsletter()
 
 st.markdown("---")
 st.markdown('<a name="feedback-poll"></a>', unsafe_allow_html=True)
