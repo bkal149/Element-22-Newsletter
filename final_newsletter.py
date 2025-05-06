@@ -21,6 +21,7 @@ if not TAVILY_API_KEY:
     st.error("❌ Tavily API key not found in environment variables. Check GitHub Secrets.")
 else:
     st.success("✅ Tavily API key loaded successfully.")
+    print(os.getenv("TAVILY_API_KEY")[:10])  # just the first part
     
 year, week_num, _ = datetime.now().isocalendar()
 base_dir = os.path.dirname(os.path.abspath(__file__))
