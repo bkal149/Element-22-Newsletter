@@ -77,6 +77,20 @@ def generate_newsletter():
             st.error(f"❌ Tavily query failed: {e}")
             return []
 
+    import re
+
+    def bolden_labels(text):
+        label_patterns = [
+            r"(?<=\n|^)Summary:",
+            r"(?<=\n|^)Full Brief:",
+            r"(?<=\n|^)Key Highlights:",
+            r"(?<=\n|^)Consulting Relevance:",
+            r"(?<=\n|^)Links:"
+        ]
+        for pattern in label_patterns:
+            text = re.sub(pattern, lambda m: f"**{m.group(0).strip()}**", text)
+        return text
+
     def extract_trends(text):
         prompt = f"""
 Extract 2–5 short trend tags (1–3 words each) summarizing the main themes from the following text.
@@ -119,7 +133,9 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
                 model="gpt-4",
                 messages=[{"role": "user", "content": prompt}]
             )
-            return response.choices[0].message.content.strip(), used_links
+            summary_text = response.choices[0].message.content.strip()
+            summary_text = bolden_labels(summary_text)
+            return summary_text, used_links
         except Exception as e:
             return f"(Error summarizing {section_name}: {e})"
 
@@ -239,17 +255,6 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
           <div class="links" style="margin-top: 10px;">
             <strong>References:</strong><br>
             {references_html}
-          </div>
-        </div>
-        """
-    
-        final_output_html += f"""
-        <div class="section">
-          <h2>{section}</h2>
-          <p>{summary_html}</p>
-          <div class="links" style="margin-top: 10px;">
-            <strong>Article Links:</strong><br>
-            {links_html}
           </div>
         </div>
         """
