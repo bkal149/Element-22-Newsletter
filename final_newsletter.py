@@ -406,10 +406,10 @@ Links:
     else:
         st.info(f"No recent results found for {company}.")
 
-# @st.cache_data
+@st.cache_data
 def check_or_generate_newsletter():
-    # Force regenerate for manual testing
-    generate_newsletter()
+    if not os.path.exists(html_path):
+        generate_newsletter()
 
 check_or_generate_newsletter()
 
