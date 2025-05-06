@@ -139,24 +139,36 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
         except Exception as e:
             return f"(Error summarizing {section_name}: {e})"
 
-    for section, params in SOURCES.items():
-        query = params.get("query", "")
+    manual_order = [
+    "Market & Macro Watch",
+    "Financial Services Transformation",
+    "AI & Automation in Financial Services",
+    "Consulting & Advisory Trends",
+    "Innovation & Tech Startups",
+    "Data Privacy & Regulatory Compliance",
+    "Enterprise Data Management",
+    "Policy & Public Sector Data"
+]
+
+    for section in manual_order:
+        params = SOURCES.get(section, {})
+        if not params:
+            continue
         st.write(f"🔍 Fetching: {section}")
         results = search_tavily(params)
-
+    
         links = [r["url"] for r in results if r.get("content")]
         texts = [r["content"] for r in results if r.get("content")]
         titles = [r["title"] for r in results if r.get("content")]
-
+    
         if texts:
             summary, used_links = summarize_section(section, texts, links, titles, today)
             section_outputs.append((section, summary, used_links))
-            # Trend tag extraction
             trends = extract_trends(summary)
             all_trend_tags.extend(trends)
         else:
-            section_outputs.append((section, "No updates today."))
-
+            section_outputs.append((section, "No updates today.", []))
+            
     # Save raw text
     output_text = f"E22 Weekly Brief – {today}\n\n"
     for section, summary in section_outputs:
