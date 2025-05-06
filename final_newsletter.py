@@ -252,6 +252,15 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
 
 st.title("🗞️ E22 Weekly Newsletter")
 
+st.markdown("""
+### 🧭 Contents
+- [🔍 Client Intel Search](#client-intel)
+- [📊 Feedback Poll](#feedback-poll)
+- [📬 This Week's Newsletter](#newsletter)
+- [📚 Past Newsletters](#archive)
+""", unsafe_allow_html=True)
+
+st.markdown('<a name="client-intel"></a>', unsafe_allow_html=True)
 st.subheader("🔍 Client Intel Search")
 
 company = st.text_input("Enter a company name to get recent news:", placeholder="e.g. BlackRock, Vanguard")
@@ -330,6 +339,7 @@ if not os.path.exists(html_path):
     generate_newsletter()
 
 st.markdown("---")
+st.markdown('<a name="feedback-poll"></a>', unsafe_allow_html=True)
 st.subheader("📊 Feedback Poll")
 
 st.markdown(
@@ -342,6 +352,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+st.markdown('<a name="newsletter"></a>', unsafe_allow_html=True)
 st.subheader("📬 This Week's Newsletter")
 
 with open(html_path, "r", encoding="utf-8") as f:
@@ -358,6 +369,7 @@ st.components.v1.html(
 )
 
 # === HTML Archive Section ===
+st.markdown('<a name="archive"></a>', unsafe_allow_html=True)
 st.subheader("📚 Past Newsletters")
 
 if os.path.exists(html_dir):
