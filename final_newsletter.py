@@ -20,7 +20,7 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 if not TAVILY_API_KEY:
     st.error("❌ Tavily API key not found in environment variables. Check GitHub Secrets.")
 else:
-    st.success(f"✅ Tavily API key loaded successfully: `{TAVILY_API_KEY[:8]}********`")
+    st.success(f"✅ Tavily API key loaded successfully: `{TAVILY_API_KEY`")
 
     
 year, week_num, _ = datetime.now().isocalendar()
