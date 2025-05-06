@@ -250,7 +250,7 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
             data = yf.download(ticker, start=f"{datetime.now().year}-01-01", interval="1d")
             fig, ax = plt.subplots()
             data["Close"].plot(ax=ax, color=color)
-            ax.set_title(f"{label} (5-Day)")
+            ax.set_title(f"{label} (YTD)")
             ax.set_ylabel("Price")
             ax.set_xlabel("Date")
             plt.tight_layout()
