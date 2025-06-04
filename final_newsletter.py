@@ -155,7 +155,6 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
         params = SOURCES.get(section, {})
         if not params:
             continue
-        st.write(f"🔍 Fetching: {section}")
         results = search_tavily(params)
     
         links = [r["url"] for r in results if r.get("content")]
@@ -328,8 +327,6 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
 
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(final_output_html)
-
-    st.success("✅ Newsletter generated, saved, and charts embedded!")
 
 # === MAIN EXECUTION ===
 
