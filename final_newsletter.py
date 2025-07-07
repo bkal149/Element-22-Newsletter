@@ -417,7 +417,6 @@ Links:
 def check_or_generate_newsletter():
     if not os.path.exists(html_path):
         generate_newsletter()
-        send_email_to_teams()  # <== add this here
 
 check_or_generate_newsletter()
 
@@ -485,42 +484,3 @@ if os.path.exists(html_dir):
             )
 else:
     st.info("No past issues found.")
-
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from dotenv import load_dotenv
-
-load_dotenv()
-
-EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
-TEAMS_EMAIL = os.getenv("TEAMS_EMAIL")  # Add this to your GitHub Secrets
-
-def send_email_to_teams():
-    try:
-        msg = MIMEMultipart()
-        msg['From'] = EMAIL_ADDRESS
-        msg['To'] = TEAMS_EMAIL
-        msg['Subject'] = "This Week's Element 22 Newsletter"
-
-        body = f"""
-        <html>
-          <body>
-            <p><strong>This Week’s Element 22 Newsletter</strong></p>
-            <p>Hi Element22,</p>
-            <p>In this week’s E22 Newsletter, you’ll find the latest updates across tech, markets, consulting, and more. Please use the feedback tool to share what you liked, didn’t like, and want added!</p>
-            <p>✅ <a href="https://element-22-newsletter.streamlit.app/">Check it out here</a></p>
-          </body>
-        </html>
-        """
-        msg.attach(MIMEText(body, "html"))
-
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
-            server.starttls()
-            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-            server.send_message(msg)
-
-        print("✅ Teams email sent.")
-    except Exception as e:
-        print(f"❌ Failed to send Teams email: {e}")
