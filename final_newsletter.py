@@ -10,6 +10,7 @@ from io import BytesIO
 import sys
 import hashlib
 import pickle
+import base64
 
 # Add utils to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'utils'))
@@ -24,13 +25,13 @@ from visualization import (
 
 # === COST CONTROL CONFIGURATION ===
 COST_CONTROLS = {
-    "max_tokens_per_request": 2000,  # Max tokens in completion
-    "max_total_tokens_per_run": 50000,  # Max total tokens per newsletter generation
-    "max_api_calls_per_run": 20,  # Max OpenAI API calls
-    "use_gpt35_for_trends": True,  # Use cheaper GPT-3.5 for trend extraction
-    "use_gpt4_for_summaries": False,  # Set to False to use GPT-3.5 for summaries (cheaper)
-    "cache_enabled": True,  # Enable caching to avoid duplicate API calls
-    "temperature": 0.3,  # Lower temperature = more deterministic = less tokens
+    "max_tokens_per_request": 2000,
+    "max_total_tokens_per_run": 50000,
+    "max_api_calls_per_run": 20,
+    "use_gpt35_for_trends": True,
+    "use_gpt4_for_summaries": False,
+    "cache_enabled": True,
+    "temperature": 0.3,
 }
 
 # Token tracking
@@ -98,7 +99,7 @@ def display_cost_dashboard():
     
     if usage['api_calls'] > 0:
         with st.sidebar.expander("📊 Usage Details"):
-            for log in usage['calls_log'][-5:]:  # Show last 5 calls
+            for log in usage['calls_log'][-5:]:
                 st.text(f"{log['purpose'][:20]}: {log['tokens']} tokens (${log['cost']:.4f})")
 
 # === CACHE SYSTEM ===
@@ -109,6 +110,7 @@ def get_cache_key():
 
 def load_cached_newsletter():
     """Load cached newsletter if exists"""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
     cache_key = get_cache_key()
     cache_file = os.path.join(base_dir, "newsletter", f".cache_{cache_key}.pkl")
     
@@ -122,6 +124,7 @@ def load_cached_newsletter():
 
 def save_cached_newsletter(data):
     """Save newsletter to cache"""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
     cache_key = get_cache_key()
     cache_file = os.path.join(base_dir, "newsletter", f".cache_{cache_key}.pkl")
     
@@ -139,54 +142,12 @@ st.set_page_config(
     page_icon="📊"
 )
 
-# === LOAD CUSTOM CSS ===
-def load_css():
-    """Load custom CSS for the app"""
-    st.markdown("""
-    <style>
-    /* Existing CSS... */
-    
-    /* Hide the button text, keep only clickable area */
-    div[data-testid="column"] > div > button {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        padding: 0 !important;
-        height: 0 !important;
-        min-height: 0 !important;
-        opacity: 0 !important;
-        position: absolute !important;
-        z-index: 10 !important;
-        width: 100% !important;
-        cursor: pointer !important;
-    }
-    
-    /* Make KPI cards clickable */
-    .kpi-card {
-        cursor: pointer;
-        transition: transform 0.2s;
-    }
-    
-    .kpi-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-    }
-    
-    /* Rest of existing CSS... */
-    </style>
-    """, unsafe_allow_html=True)
-
-load_css()
-
-# === RENDER APP HEADER (at the top of every page) ===
-render_app_header()
-
-# === SETUP ===
+# === SETUP (must come before functions that use these variables) ===
+base_dir = os.path.dirname(os.path.abspath(__file__))
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 year, week_num, _ = datetime.now().isocalendar()
-base_dir = os.path.dirname(os.path.abspath(__file__))
 html_dir = os.path.join(base_dir, "newsletter", "html")
 raw_dir = os.path.join(base_dir, "newsletter", "raw")
 trend_dir = os.path.join(base_dir, "newsletter", "trends")
@@ -198,10 +159,181 @@ html_path = os.path.join(html_dir, f"{year}-W{week_num}.html")
 txt_path = os.path.join(raw_dir, f"e22_weekly_brief_{year}-W{week_num}.txt")
 trend_csv_path = os.path.join(trend_dir, "trend_log.csv")
 
+# === LOAD CUSTOM CSS ===
+def load_css():
+    """Load custom CSS for the app"""
+    css_file_path = os.path.join(base_dir, "styles", "main.css")
+    
+    # Create styles directory if it doesn't exist
+    os.makedirs(os.path.join(base_dir, "styles"), exist_ok=True)
+    
+    # Check if CSS file exists, if not, use inline CSS
+    if os.path.exists(css_file_path):
+        with open(css_file_path, "r") as f:
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    else:
+        # Fallback inline CSS (abbreviated version with Element22 colors)
+        st.markdown("""
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        
+        :root {
+            --primary-color: #000000;
+            --secondary-color: #0056b3;
+            --white: #ffffff;
+        }
+        
+        .stApp {
+            background-color: #ffffff;
+        }
+        
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+        
+        .app-header {
+            background: linear-gradient(135deg, #000000 0%, #2c3e50 100%);
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            border-bottom: 3px solid #0056b3;
+        }
+        
+        .app-header-left {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        
+        .app-logo {
+            height: 60px;
+            width: auto;
+            filter: brightness(0) invert(1);
+        }
+        
+        .app-title {
+            color: white;
+            font-size: 2rem;
+            font-weight: 800;
+            margin: 0;
+        }
+        
+        .app-subtitle {
+            color: #e9ecef;
+            font-size: 1rem;
+            margin: 0;
+        }
+        
+        .header-badge {
+            background: #0056b3;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .hero-header {
+            background: linear-gradient(135deg, #000000 0%, #2c3e50 50%, #0056b3 100%);
+            padding: 3rem 1.5rem;
+            text-align: center;
+            color: white;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border: 2px solid #0056b3;
+        }
+        
+        .kpi-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: 2px solid #e9ecef;
+            transition: all 0.25s ease;
+            cursor: pointer;
+        }
+        
+        .kpi-card:hover {
+            transform: translateY(-4px);
+            border-color: #0056b3;
+        }
+        
+        .kpi-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #000000;
+        }
+        
+        .section-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            overflow: hidden;
+            border: 2px solid #e9ecef;
+        }
+        
+        .section-header {
+            background: linear-gradient(135deg, #000000, #2c3e50);
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border-bottom: 3px solid #0056b3;
+        }
+        
+        .section-title {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+        
+        .section-content {
+            padding: 2rem;
+            line-height: 1.8;
+        }
+        
+        div[data-testid="column"] > div > button {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            opacity: 0 !important;
+            position: absolute !important;
+            z-index: 10 !important;
+            width: 100% !important;
+            cursor: pointer !important;
+        }
+        
+        @media (max-width: 768px) {
+            .app-header {
+                flex-direction: column;
+                padding: 1rem;
+            }
+            
+            .app-header-left {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .app-logo {
+                height: 50px;
+            }
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
 # === HELPER FUNCTIONS ===
 
 def render_app_header():
-    """Render the application header with Element22 logo"""
+    """Render professional top navigation bar"""
     year, week_num, _ = datetime.now().isocalendar()
     today = datetime.now().strftime('%B %d, %Y')
     
@@ -209,50 +341,77 @@ def render_app_header():
     logo_path = os.path.join(base_dir, "assets", "element22_logo.png")
     
     if os.path.exists(logo_path):
-        # Convert logo to base64 for embedding
-        import base64
         with open(logo_path, "rb") as f:
             logo_data = base64.b64encode(f.read()).decode()
-        
-        logo_html = f'<img src="data:image/png;base64,{logo_data}" class="app-logo" alt="Element22 Logo">'
+        logo_html = f'<img src="data:image/png;base64,{logo_data}" class="nav-logo" alt="Element22">'
     else:
-        # Fallback text logo
-        logo_html = '<div style="font-size: 2rem; font-weight: 800; color: white;">element<span style="color: #0056b3;">22</span></div>'
+        logo_html = '<div class="nav-brand-text">element<span style="color: #4A148C;">22</span></div>'
     
     st.markdown(f"""
-    <div class="app-header">
-        <div class="app-header-left">
+    <div class="top-nav">
+        <div class="nav-logo-container">
             {logo_html}
-            <div class="app-header-content">
-                <h1 class="app-title">Weekly Intelligence Brief</h1>
-                <p class="app-subtitle">Financial Services & Technology Insights</p>
-            </div>
+            <span class="nav-brand-text">Intelligence Platform</span>
         </div>
-        <div class="app-header-right">
-            <div class="header-badge">Week {week_num}, {datetime.now().year}</div>
-            <div class="header-badge">{today}</div>
+        <div class="nav-items">
+            <div class="nav-badge">Week {week_num}, {year}</div>
+            <div class="nav-badge">{today}</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
 
 def render_hero_header():
-    """Render hero header for dashboard view"""
+    """Render hero section for dashboard"""
     year, week_num, _ = datetime.now().isocalendar()
     today = datetime.now().strftime('%B %d, %Y')
     
     st.markdown(f"""
-    <div class="hero-header">
-        <h1>📊 Executive Dashboard</h1>
-        <p>Week {week_num}, {year} • {today}</p>
-        <p class="subtitle">Real-time insights from financial services, technology, and consulting sectors</p>
+    <div class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">Executive Intelligence Brief</h1>
+            <p class="hero-subtitle">
+                Real-time insights from financial services, technology, and consulting sectors
+            </p>
+            <div class="hero-meta">
+                <span class="hero-meta-item">📊 Week {week_num}, {year}</span>
+                <span class="hero-meta-item">📅 {today}</span>
+                <span class="hero-meta-item">🔄 Auto-Updated Weekly</span>
+            </div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
 
+def render_section_card(title: str, content: str, icon: str, references: list = None):
+    """Render content card with professional styling"""
+    import re
+    
+    content_html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', content)
+    content_html = re.sub(r'<strong>Article Links?:?</strong>\s*', '', content_html)
+    content_html = re.sub(r'Article Links?:?\s*', '', content_html)
+    
+    st.markdown(f"""
+    <div class="content-card">
+        <div class="card-header">
+            <span class="card-icon">{icon}</span>
+            <h2 class="card-title">{title}</h2>
+        </div>
+        <div class="card-content">
+            {content_html}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    if references and title != "Market & Macro Watch":
+        with st.expander(f"📎 View {len(references)} Sources"):
+            for i, ref in enumerate(references, 1):
+                st.markdown(f"**[{i}]** [{ref}]({ref})")
+
+
 def render_kpi_dashboard(metrics: dict):
-    """Render KPI metrics dashboard with improved layout"""
-    st.markdown('<div class="kpi-container">', unsafe_allow_html=True)
+    """Render KPI dashboard with corporate card grid"""
+    st.markdown('<div class="kpi-grid">', unsafe_allow_html=True)
     
     col1, col2, col3, col4 = st.columns(4)
     
@@ -310,40 +469,8 @@ def render_kpi_dashboard(metrics: dict):
     st.markdown('</div>', unsafe_allow_html=True)
 
 
-def render_section_card(title: str, content: str, icon: str, references: list = None):
-    """Render a content section as a card"""
-    import re
-    
-    # Convert **text** to <strong>text</strong> for proper HTML rendering
-    content_html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', content)
-    
-    # Remove any "Article Links:" sections from the content
-    content_html = re.sub(r'<strong>Article Links?:?</strong>\s*', '', content_html)
-    content_html = re.sub(r'Article Links?:?\s*', '', content_html)
-    
-    st.markdown(f"""
-    <div class="section-card">
-        <div class="section-header">
-            <span class="section-icon">{icon}</span>
-            <h2 class="section-title">{title}</h2>
-        </div>
-        <div class="section-content">
-            {content_html}
-        </div>
-    """, unsafe_allow_html=True)
-    
-    # Only show references expander if we have references and it's not Market & Macro Watch
-    if references and title != "Market & Macro Watch":
-        with st.expander(f"📎 View {len(references)} Sources"):
-            for i, ref in enumerate(references, 1):
-                st.markdown(f"[{i}] [{ref}]({ref})")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
 def render_academic_paper_card(paper: dict):
-    """Render an academic paper as a card"""
-    # Extract paper details
+    """Render academic paper with professional styling"""
     title = paper.get("title", "Untitled")
     authors = paper.get("authors", [])
     year = paper.get("year", "N/A")
@@ -352,34 +479,26 @@ def render_academic_paper_card(paper: dict):
     url = paper.get("url", "#")
     source = paper.get("source", "Unknown")
     
-    # Format authors
     if isinstance(authors, list) and len(authors) > 0:
-        if len(authors) > 3:
-            author_str = f"{', '.join(authors[:3])}, et al."
-        else:
-            author_str = ', '.join(authors)
+        author_str = f"{', '.join(authors[:3])}, et al." if len(authors) > 3 else ', '.join(authors)
     else:
         author_str = "Unknown authors"
     
-    # Clean abstract
     abstract_clean = abstract.replace('\n', ' ').strip()
     if len(abstract_clean) > 300:
         abstract_clean = abstract_clean[:297] + "..."
     
-    # Create a clean card layout
     with st.container():
         st.markdown(f"""
-        <div style="padding: 1rem; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 1rem; background-color: white;">
-            <h4 style="margin-top: 0; color: #0056b3;">
-                <a href="{url}" target="_blank" style="text-decoration: none; color: #0056b3;">{title}</a>
+        <div class="paper-card">
+            <h4 class="paper-title">
+                <a href="{url}" target="_blank">{title}</a>
             </h4>
-            <p style="color: #6c757d; font-size: 0.9em; margin: 0.5rem 0;">
+            <p class="paper-meta">
                 <strong>{author_str}</strong> • {year} • {source}
             </p>
-            <p style="color: #495057; margin: 0.5rem 0;">{abstract_clean}</p>
-            <p style="color: #6c757d; font-size: 0.85em; margin: 0.5rem 0;">
-                📊 <strong>{citations}</strong> citations
-            </p>
+            <p class="paper-abstract">{abstract_clean}</p>
+            <p class="paper-citations">📊 {citations} citations</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -800,23 +919,40 @@ if not st.session_state['newsletter_generated']:
 
 # === SECTION: DASHBOARD ===
 if selected_section == "dashboard":
-    render_hero_header()  # Show hero header only on dashboard
+    render_hero_header()
     
-    st.markdown("## 📈 Key Performance Indicators")
+    # KPI Section
+    st.markdown('<div class="content-section">', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="section-header">
+        <h2 class="section-title">Key Performance Indicators</h2>
+        <div class="section-divider"></div>
+        <p class="section-subtitle">
+            Track weekly intelligence metrics across articles, research, and market data
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
     metrics = calculate_kpi_metrics()
     render_kpi_dashboard(metrics)
+    st.markdown('</div>', unsafe_allow_html=True)
     
-    st.markdown("---")
-    
-    # Show trend charts
+    # Trends Section
     if os.path.exists(trend_csv_path):
+        st.markdown('<div class="content-section">', unsafe_allow_html=True)
+        st.markdown("""
+        <div class="section-header">
+            <h2 class="section-title">Trend Analysis</h2>
+            <div class="section-divider"></div>
+        </div>
+        """, unsafe_allow_html=True)
+        
         trend_df = pd.read_csv(trend_csv_path)
         today_str = datetime.now().strftime('%Y-%m-%d')
         
         col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown("### 🔥 Top Trends This Week")
             week_trends = (
                 trend_df[trend_df["date"] == today_str]
                 .groupby("tag")["count"]
@@ -825,11 +961,10 @@ if selected_section == "dashboard":
                 .head(5)
             )
             if not week_trends.empty:
-                fig = create_trend_chart(week_trends, "This Week's Trends", "#1f77b4")
+                fig = create_trend_chart(week_trends, "This Week's Trends", "#4A148C")
                 st.plotly_chart(fig, use_container_width=True)
         
         with col2:
-            st.markdown("### 📈 Top Trends Overall")
             overall_trends = (
                 trend_df.groupby("tag")["count"]
                 .sum()
@@ -837,8 +972,10 @@ if selected_section == "dashboard":
                 .head(5)
             )
             if not overall_trends.empty:
-                fig = create_trend_chart(overall_trends, "Overall Trends", "#2ca02c")
+                fig = create_trend_chart(overall_trends, "Overall Trends", "#7B1FA2")
                 st.plotly_chart(fig, use_container_width=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # === SECTION: CLIENT INTEL ===
 elif selected_section == "intel":
