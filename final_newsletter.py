@@ -362,9 +362,8 @@ def render_app_header():
 
 
 def render_hero_header():
-    """Render hero section for dashboard"""
+    """Render hero section for dashboard - NO DUPLICATE DATE"""
     year, week_num, _ = datetime.now().isocalendar()
-    today = datetime.now().strftime('%B %d, %Y')
     
     st.markdown(f"""
     <div class="hero-section">
@@ -375,7 +374,6 @@ def render_hero_header():
             </p>
             <div class="hero-meta">
                 <span class="hero-meta-item">📊 Week {week_num}, {year}</span>
-                <span class="hero-meta-item">📅 {today}</span>
                 <span class="hero-meta-item">🔄 Auto-Updated Weekly</span>
             </div>
         </div>
@@ -403,7 +401,8 @@ def render_section_card(title: str, content: str, icon: str, references: list = 
     </div>
     """, unsafe_allow_html=True)
     
-    if references and title != "Market & Macro Watch":
+    # Show references for ALL sections (including Market & Macro Watch)
+    if references:
         with st.expander(f"📎 View {len(references)} Sources"):
             for i, ref in enumerate(references, 1):
                 st.markdown(f"**[{i}]** [{ref}]({ref})")
@@ -879,9 +878,6 @@ def generate_newsletter():
 if 'newsletter_generated' not in st.session_state:
     st.session_state['newsletter_generated'] = False
 
-# Render hero header
-render_app_header()
-
 # Sidebar navigation
 st.sidebar.title("🧭 Navigation")
 st.sidebar.markdown("---")
@@ -903,6 +899,13 @@ else:
     selected_nav = st.sidebar.radio("Go to:", [opt[0] for opt in nav_options])
     selected_section = [opt[1] for opt in nav_options if opt[0] == selected_nav][0]
 
+# Update all navigation sections to include header:
+selected_section = st.session_state.get('nav_override', selected_section)
+
+# === RENDER HEADER ON ALL PAGES ===
+if selected_section != "dashboard":
+    render_app_header()
+
 st.sidebar.markdown("---")
 st.sidebar.markdown("### ⚙️ Actions")
 if st.sidebar.button("🔄 Regenerate Newsletter"):
@@ -919,7 +922,8 @@ if not st.session_state['newsletter_generated']:
 
 # === SECTION: DASHBOARD ===
 if selected_section == "dashboard":
-    render_hero_header()
+    render_app_header()  # Header for dashboard too
+    render_hero_header()  # Plus the hero section
     
     # KPI Section
     st.markdown('<div class="content-section">', unsafe_allow_html=True)
@@ -961,6 +965,7 @@ if selected_section == "dashboard":
                 .head(5)
             )
             if not week_trends.empty:
+                # Purple chart for this week
                 fig = create_trend_chart(week_trends, "This Week's Trends", "#4A148C")
                 st.plotly_chart(fig, use_container_width=True)
         
@@ -972,13 +977,15 @@ if selected_section == "dashboard":
                 .head(5)
             )
             if not overall_trends.empty:
-                fig = create_trend_chart(overall_trends, "Overall Trends", "#7B1FA2")
+                # Blue chart for overall
+                fig = create_trend_chart(overall_trends, "Overall Trends", "#1976D2")
                 st.plotly_chart(fig, use_container_width=True)
         
         st.markdown('</div>', unsafe_allow_html=True)
 
 # === SECTION: CLIENT INTEL ===
 elif selected_section == "intel":
+    # Header already rendered above
     st.markdown("## 🔍 Client Intelligence Briefing")
     st.markdown("---")
     
@@ -1055,94 +1062,73 @@ You are an industry analyst. Analyze recent developments at {company}.
 
 # === SECTION: NEWSLETTER ===
 elif selected_section == "newsletter":
+    # Header already rendered above
     st.markdown("## 📬 This Week's Newsletter")
     st.markdown("---")
     
-    if 'section_outputs' in st.session_state:
-        section_icons = {
-            "Market & Macro Watch": "📊",
-            "Financial Services Transformation": "🏦",
-            "AI & Automation in Financial Services": "🤖",
-            "Consulting & Advisory Trends": "💼",
-            "Innovation & Tech Startups": "🚀",
-            "Data Privacy & Regulatory Compliance": "🔒",
-            "Enterprise Data Management": "💾",
-            "Policy & Public Sector Data": "🏛️"
-        }
+    if os.path.exists(html_path):
+        # ... existing code ...
         
-        # Show market chart first
-        st.markdown("### 📈 Market Performance")
-        try:
-            fig = create_market_performance_chart()
-            st.plotly_chart(fig, use_container_width=True)
-        except Exception as e:
-            st.warning(f"Could not load market chart: {e}")
-        
-        st.markdown("---")
-        
-        # Show all sections
-        for section, summary, references in st.session_state['section_outputs']:
-            icon = section_icons.get(section, "📄")
-            render_section_card(section, summary.replace("\n", "<br>"), icon, references)
+        # When rendering sections, ensure references are passed:
+        for section_name, section_data in st.session_state['newsletter_content'].items():
+            icon = {
+                'Financial Services Transformation': '🏦',
+                'Consulting & Advisory': '📊',
+                'Technology & Innovation': '💻',
+                'Market & Macro Watch': '📈',
+                'Research Highlights': '📚'
+            }.get(section_name, '📄')
+            
+            content = section_data.get('content', '')
+            references = section_data.get('references', [])  # Make sure this is included
+            
+            render_section_card(section_name, content, icon, references)
+    else:
+        st.info("Newsletter not generated yet. Please check back later.")
 
 # === SECTION: ACADEMIC PAPERS ===
 elif selected_section == "academic":
+    # Header already rendered above
     st.markdown("## 📚 Recent Academic Papers")
     st.markdown("---")
     
     if 'academic_results' not in st.session_state or not st.session_state['academic_results']:
         st.info("No academic papers available. Generate newsletter first.")
     else:
-        # Add filters
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            selected_topics = st.multiselect(
-                "Filter by Topic",
-                options=list(st.session_state['academic_results'].keys()),
-                default=list(st.session_state['academic_results'].keys())
-            )
-        with col2:
-            sort_by = st.selectbox(
-                "Sort by",
-                options=["Citations (High to Low)", "Year (Recent First)", "Title (A-Z)"]
-            )
-        
+        # NO FILTERS - Just display papers
         st.markdown("---")
         
-        # Collect and sort papers
+        # Collect all papers
         all_papers = []
-        for topic in selected_topics:
-            papers = st.session_state['academic_results'].get(topic, [])
+        for topic, papers in st.session_state['academic_results'].items():
             for paper in papers:
                 paper_copy = paper.copy()
                 paper_copy['topic'] = topic
                 all_papers.append(paper_copy)
         
-        # Sort papers
-        if sort_by == "Citations (High to Low)":
-            all_papers.sort(key=lambda x: x.get("citation_count", 0), reverse=True)
-        elif sort_by == "Year (Recent First)":
-            all_papers.sort(key=lambda x: x.get("year", 1900), reverse=True)
-        else:  # Title A-Z
-            all_papers.sort(key=lambda x: x.get("title", "").lower())
+        # Sort by citations (high to low)
+        all_papers.sort(key=lambda x: x.get("citation_count", 0), reverse=True)
         
         if not all_papers:
-            st.info("No papers match the selected filters.")
+            st.info("No papers available.")
         else:
-            # Display papers by topic
-            for topic in selected_topics:
-                topic_papers = [p for p in all_papers if p.get('topic') == topic]
+            # Group papers by topic
+            current_topic = None
+            for paper in all_papers:
+                topic = paper.get('topic')
                 
-                if topic_papers:
+                # Display topic header when it changes
+                if topic != current_topic:
+                    if current_topic is not None:
+                        st.markdown("---")
                     st.markdown(f"### {topic}")
-                    
-                    for paper in topic_papers:
-                        render_academic_paper_card(paper)
-                    
-                    st.markdown("---")
+                    current_topic = topic
+                
+                render_academic_paper_card(paper)
 
 # === SECTION: TRENDS ===
 elif selected_section == "trends":
+    # Header already rendered above
     st.markdown("## 📈 Trending Topics Analysis")
     st.markdown("---")
     
@@ -1157,6 +1143,7 @@ elif selected_section == "trends":
 
 # === SECTION: ARCHIVE ===
 elif selected_section == "archive":
+    # Header already rendered above
     st.markdown("## 📁 Newsletter Archive")
     st.markdown("---")
     

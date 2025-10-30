@@ -13,10 +13,10 @@ from typing import Dict, List, Optional
 def create_trend_chart(
     trend_data: pd.Series,
     title: str = "Trend Analysis",
-    color: str = "#0056b3"
+    color: str = "#4A148C"  # Default to purple
 ) -> go.Figure:
     """
-    Create an interactive bar chart for trends
+    Create an interactive bar chart for trends with purple/blue theme
     
     Args:
         trend_data: Pandas Series with trend tags as index and counts as values
@@ -26,14 +26,25 @@ def create_trend_chart(
     Returns:
         Plotly Figure object
     """
+    # Use purple and blue gradient
+    colors = []
+    purple = "#4A148C"
+    blue = "#1976D2"
+    
+    for i in range(len(trend_data)):
+        # Interpolate between purple and blue
+        ratio = i / max(len(trend_data) - 1, 1)
+        colors.append(purple if ratio < 0.5 else blue)
+    
     fig = go.Figure(data=[
         go.Bar(
             x=trend_data.index,
             y=trend_data.values,
-            marker_color=color,
+            marker_color=colors,
             hovertemplate='<b>%{x}</b><br>Mentions: %{y}<extra></extra>',
             text=trend_data.values,
-            textposition='outside'
+            textposition='outside',
+            textfont=dict(size=14, color='#1A1A1A', family='Inter')
         )
     ])
     
@@ -42,19 +53,26 @@ def create_trend_chart(
             'text': title,
             'x': 0.5,
             'xanchor': 'center',
-            'font': {'size': 18, 'color': '#0056b3', 'family': 'Arial'}
+            'font': {'size': 20, 'color': '#1A1A1A', 'family': 'Inter', 'weight': 600}
         },
         xaxis_title="Trend Tag",
         yaxis_title="Mentions",
         template="plotly_white",
-        height=400,
+        height=450,
         hovermode='x',
         showlegend=False,
-        margin=dict(l=50, r=50, t=80, b=100),
+        margin=dict(l=60, r=60, t=100, b=120),
         xaxis={
             'tickangle': -45,
-            'tickfont': {'size': 11}
-        }
+            'tickfont': {'size': 12, 'family': 'Inter'},
+            'title_font': {'size': 14, 'family': 'Inter', 'color': '#4A4A4A'}
+        },
+        yaxis={
+            'tickfont': {'size': 12, 'family': 'Inter'},
+            'title_font': {'size': 14, 'family': 'Inter', 'color': '#4A4A4A'}
+        },
+        plot_bgcolor='white',
+        paper_bgcolor='white'
     )
     
     return fig
