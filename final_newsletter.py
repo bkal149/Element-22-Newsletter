@@ -332,8 +332,21 @@ def load_css():
 
 # === HELPER FUNCTIONS ===
 
+def render_hero_header():
+    """Render the gradient hero header"""
+    year, week_num, _ = datetime.now().isocalendar()
+    today = datetime.now().strftime('%B %d, %Y')
+    st.markdown(f"""
+    <div class="hero-header">
+        <h1>🗞️ E22 Weekly Brief</h1>
+        <p>Your Strategic Intelligence Digest</p>
+        <p class="subtitle">Week {week_num}, {year} • {today}</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+
 def render_app_header():
-    """Render professional top navigation bar"""
+    """Render simple top navigation bar"""
     year, week_num, _ = datetime.now().isocalendar()
     today = datetime.now().strftime('%B %d, %Y')
     
@@ -341,6 +354,7 @@ def render_app_header():
     logo_path = os.path.join(base_dir, "assets", "element22_logo.png")
     
     if os.path.exists(logo_path):
+        import base64
         with open(logo_path, "rb") as f:
             logo_data = base64.b64encode(f.read()).decode()
         logo_html = f'<img src="data:image/png;base64,{logo_data}" class="nav-logo" alt="Element22">'
@@ -361,145 +375,139 @@ def render_app_header():
     """, unsafe_allow_html=True)
 
 
-def render_hero_header():
-    """Render hero section for dashboard - NO DUPLICATE DATE"""
-    year, week_num, _ = datetime.now().isocalendar()
+def render_kpi_dashboard(metrics: dict):
+    """Render KPI dashboard with cards"""
+    st.markdown('<div class="kpi-container">', unsafe_allow_html=True)
     
-    st.markdown(f"""
-    <div class="hero-section">
-        <div class="hero-content">
-            <h1 class="hero-title">Executive Intelligence Brief</h1>
-            <p class="hero-subtitle">
-                Real-time insights from financial services, technology, and consulting sectors
-            </p>
-            <div class="hero-meta">
-                <span class="hero-meta-item">📊 Week {week_num}, {year}</span>
-                <span class="hero-meta-item">🔄 Auto-Updated Weekly</span>
+    kpis = [
+        {
+            "icon": "📰",
+            "value": metrics.get("articles", 0),
+            "label": "Articles Analyzed",
+            "change": metrics.get("articles_change", 0),
+            "card_type": "info"
+        },
+        {
+            "icon": "🔥",
+            "value": metrics.get("trends", 0),
+            "label": "Trending Topics",
+            "change": metrics.get("trends_change", 0),
+            "card_type": "accent"
+        },
+        {
+            "icon": "📚",
+            "value": metrics.get("papers", 0),
+            "label": "Academic Papers",
+            "change": metrics.get("papers_change", 0),
+            "card_type": "success"
+        },
+        {
+            "icon": "📈",
+            "value": f"{metrics.get('market_movement', 0):+.1f}%",
+            "label": "S&P 500 (Week)",
+            "change": None,
+            "card_type": "warning"
+        }
+    ]
+    
+    cols = st.columns(4)
+    for col, kpi in zip(cols, kpis):
+        with col:
+            change_html = ""
+            if kpi["change"] is not None:
+                change_class = "positive" if kpi["change"] >= 0 else "negative"
+                change_symbol = "↑" if kpi["change"] >= 0 else "↓"
+                change_html = f'<div class="kpi-change {change_class}">{change_symbol} {abs(kpi["change"])} vs last week</div>'
+            
+            st.markdown(f"""
+            <div class="kpi-card {kpi['card_type']}">
+                <div class="kpi-header">
+                    <span class="kpi-icon">{kpi['icon']}</span>
+                </div>
+                <div class="kpi-value">{kpi['value']}</div>
+                <div class="kpi-label">{kpi['label']}</div>
+                {change_html}
             </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 def render_section_card(title: str, content: str, icon: str, references: list = None):
-    """Render content card with professional styling"""
+    """Render a content section as a card"""
     import re
     
+    # Convert **text** to <strong>text</strong> for proper HTML rendering
     content_html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', content)
-    content_html = re.sub(r'<strong>Article Links?:?</strong>\s*', '', content_html)
-    content_html = re.sub(r'Article Links?:?\s*', '', content_html)
+    content_html = content_html.replace('\n', '<br>')
     
     st.markdown(f"""
-    <div class="content-card">
-        <div class="card-header">
-            <span class="card-icon">{icon}</span>
-            <h2 class="card-title">{title}</h2>
+    <div class="section-card">
+        <div class="section-header">
+            <span class="section-icon">{icon}</span>
+            <h2 class="section-title">{title}</h2>
         </div>
-        <div class="card-content">
+        <div class="section-content">
             {content_html}
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    # Show references for ALL sections (including Market & Macro Watch)
+    # Show references for ALL sections
     if references:
         with st.expander(f"📎 View {len(references)} Sources"):
             for i, ref in enumerate(references, 1):
                 st.markdown(f"**[{i}]** [{ref}]({ref})")
 
 
-def render_kpi_dashboard(metrics: dict):
-    """Render KPI dashboard with corporate card grid"""
-    st.markdown('<div class="kpi-grid">', unsafe_allow_html=True)
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        if st.button("📰", key="kpi_articles", help="View articles", use_container_width=True):
-            st.session_state['nav_override'] = 'intel'
-            st.rerun()
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-icon">📰</div>
-            <div class="kpi-label">Articles Analyzed</div>
-            <div class="kpi-value">{metrics['articles']}</div>
-            <div class="kpi-change positive">+{metrics['articles_change']} this week</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        if st.button("📊", key="kpi_trends", help="View trends", use_container_width=True):
-            st.session_state['nav_override'] = 'trends'
-            st.rerun()
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-icon">📊</div>
-            <div class="kpi-label">Trending Topics</div>
-            <div class="kpi-value">{metrics['trends']}</div>
-            <div class="kpi-change positive">+{metrics['trends_change']} new</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col3:
-        if st.button("📚", key="kpi_papers", help="View academic papers", use_container_width=True):
-            st.session_state['nav_override'] = 'academic'
-            st.rerun()
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-icon">📚</div>
-            <div class="kpi-label">Academic Papers</div>
-            <div class="kpi-value">{metrics['papers']}</div>
-            <div class="kpi-change positive">+{metrics['papers_change']} recent</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col4:
-        movement_color = "positive" if metrics['market_movement'] >= 0 else "negative"
-        movement_symbol = "↑" if metrics['market_movement'] >= 0 else "↓"
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-icon">📈</div>
-            <div class="kpi-label">Market Movement</div>
-            <div class="kpi-value">{metrics['market_movement']:+.2f}%</div>
-            <div class="kpi-change {movement_color}">{movement_symbol} S&P 500 (5d)</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
 def render_academic_paper_card(paper: dict):
-    """Render academic paper with professional styling"""
+    """Render a single academic paper card"""
     title = paper.get("title", "Untitled")
     authors = paper.get("authors", [])
     year = paper.get("year", "N/A")
     citations = paper.get("citation_count", 0)
     abstract = paper.get("abstract", "No abstract available.")
     url = paper.get("url", "#")
-    source = paper.get("source", "Unknown")
+    venue = paper.get("venue", "Unknown")
+    arxiv_id = paper.get("arxiv_id", None)
     
+    # Format authors
     if isinstance(authors, list) and len(authors) > 0:
-        author_str = f"{', '.join(authors[:3])}, et al." if len(authors) > 3 else ', '.join(authors)
+        authors_str = ", ".join(authors[:3])
+        if len(authors) > 3:
+            authors_str += f" et al. ({len(authors)} authors)"
     else:
-        author_str = "Unknown authors"
+        authors_str = "Unknown authors"
     
-    abstract_clean = abstract.replace('\n', ' ').strip()
-    if len(abstract_clean) > 300:
-        abstract_clean = abstract_clean[:297] + "..."
+    # Clean abstract
+    abstract_preview = abstract[:300] + "..." if len(abstract) > 300 else abstract
     
-    with st.container():
-        st.markdown(f"""
-        <div class="paper-card">
-            <h4 class="paper-title">
-                <a href="{url}" target="_blank">{title}</a>
-            </h4>
-            <p class="paper-meta">
-                <strong>{author_str}</strong> • {year} • {source}
-            </p>
-            <p class="paper-abstract">{abstract_clean}</p>
-            <p class="paper-citations">📊 {citations} citations</p>
+    # Build paper links
+    links_html = ""
+    if url:
+        links_html += f'<a href="{url}" target="_blank" class="paper-link-btn">🔗 View Paper</a>'
+    if arxiv_id:
+        links_html += f'<a href="https://arxiv.org/abs/{arxiv_id}" target="_blank" class="paper-link-btn">📄 arXiv</a>'
+    
+    st.markdown(f"""
+    <div class="paper-card">
+        <div class="paper-title">
+            <a href="{url}" target="_blank">{title}</a>
         </div>
-        """, unsafe_allow_html=True)
+        <div class="paper-meta">
+            <span>👥 {authors_str}</span>
+            <span>📅 {year}</span>
+            <span class="badge citation">📊 {citations} citations</span>
+            <span class="badge venue">🏛️ {venue}</span>
+        </div>
+        <div class="paper-abstract">
+            {abstract_preview}
+        </div>
+        <div class="paper-links">
+            {links_html}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # === CORE FUNCTIONS WITH COST CONTROLS ===
 
@@ -878,26 +886,13 @@ def generate_newsletter():
 if 'newsletter_generated' not in st.session_state:
     st.session_state['newsletter_generated'] = False
 
-# Sidebar navigation
-st.sidebar.title("🧭 Navigation")
-st.sidebar.markdown("---")
-nav_options = [
-    ("📊 Dashboard", "dashboard"),
-    ("🔍 Client Intel", "intel"),
-    ("📬 Newsletter", "newsletter"),
-    ("📚 Academic Papers", "academic"),
-    ("📈 Trends", "trends"),
-    ("📁 Archive", "archive")
-]
+# Render navigation header on all pages except dashboard
+if 'selected_section' not in st.session_state:
+    st.session_state['selected_section'] = 'dashboard'
 
-# Check if we have a nav override from KPI click
-if 'nav_override' in st.session_state:
-    selected_section = st.session_state['nav_override']
-    selected_nav = [opt[0] for opt in nav_options if opt[1] == selected_section][0]
-    del st.session_state['nav_override']
-else:
-    selected_nav = st.sidebar.radio("Go to:", [opt[0] for opt in nav_options])
-    selected_section = [opt[1] for opt in nav_options if opt[0] == selected_nav][0]
+# Get current section from navigation
+selected_nav = st.sidebar.radio("Go to:", [opt[0] for opt in nav_options])
+selected_section = [opt[1] for opt in nav_options if opt[0] == selected_nav][0]
 
 # Update all navigation sections to include header:
 selected_section = st.session_state.get('nav_override', selected_section)
