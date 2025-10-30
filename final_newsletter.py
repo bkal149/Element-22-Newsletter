@@ -20,6 +20,85 @@ from visualization import (
     create_citation_distribution_chart
 )
 
+# === COST CONTROL CONFIGURATION ===
+COST_CONTROLS = {
+    "max_tokens_per_request": 2000,  # Max tokens in completion
+    "max_total_tokens_per_run": 50000,  # Max total tokens per newsletter generation
+    "max_api_calls_per_run": 20,  # Max OpenAI API calls
+    "use_gpt35_for_trends": True,  # Use cheaper GPT-3.5 for trend extraction
+    "use_gpt4_for_summaries": False,  # Set to False to use GPT-3.5 for summaries (cheaper)
+    "cache_enabled": True,  # Enable caching to avoid duplicate API calls
+    "temperature": 0.3,  # Lower temperature = more deterministic = less tokens
+}
+
+# Token tracking
+if 'openai_usage' not in st.session_state:
+    st.session_state['openai_usage'] = {
+        'total_tokens': 0,
+        'api_calls': 0,
+        'estimated_cost': 0.0,
+        'calls_log': []
+    }
+
+# Pricing (as of late 2024, in USD per 1K tokens)
+GPT4_INPUT_PRICE = 0.03
+GPT4_OUTPUT_PRICE = 0.06
+GPT35_INPUT_PRICE = 0.0005
+GPT35_OUTPUT_PRICE = 0.0015
+
+def track_openai_usage(model: str, prompt_tokens: int, completion_tokens: int, purpose: str):
+    """Track OpenAI API usage and costs"""
+    total = prompt_tokens + completion_tokens
+    
+    # Calculate cost
+    if "gpt-4" in model:
+        cost = (prompt_tokens * GPT4_INPUT_PRICE / 1000) + (completion_tokens * GPT4_OUTPUT_PRICE / 1000)
+    else:
+        cost = (prompt_tokens * GPT35_INPUT_PRICE / 1000) + (completion_tokens * GPT35_OUTPUT_PRICE / 1000)
+    
+    # Update session state
+    st.session_state['openai_usage']['total_tokens'] += total
+    st.session_state['openai_usage']['api_calls'] += 1
+    st.session_state['openai_usage']['estimated_cost'] += cost
+    st.session_state['openai_usage']['calls_log'].append({
+        'time': datetime.now().isoformat(),
+        'model': model,
+        'purpose': purpose,
+        'tokens': total,
+        'cost': cost
+    })
+    
+    return total, cost
+
+def check_cost_limits():
+    """Check if we've exceeded cost limits"""
+    usage = st.session_state['openai_usage']
+    
+    if usage['total_tokens'] >= COST_CONTROLS['max_total_tokens_per_run']:
+        st.warning(f"⚠️ Token limit reached ({usage['total_tokens']:,} tokens). Some content may be truncated.")
+        return False
+    
+    if usage['api_calls'] >= COST_CONTROLS['max_api_calls_per_run']:
+        st.warning(f"⚠️ API call limit reached ({usage['api_calls']} calls). Some sections may be skipped.")
+        return False
+    
+    return True
+
+def display_cost_dashboard():
+    """Display cost tracking dashboard in sidebar"""
+    usage = st.session_state['openai_usage']
+    
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 💰 OpenAI Usage")
+    st.sidebar.metric("Total Tokens", f"{usage['total_tokens']:,}")
+    st.sidebar.metric("API Calls", usage['api_calls'])
+    st.sidebar.metric("Est. Cost", f"${usage['estimated_cost']:.4f}")
+    
+    if usage['api_calls'] > 0:
+        with st.sidebar.expander("📊 Usage Details"):
+            for log in usage['calls_log'][-5:]:  # Show last 5 calls
+                st.text(f"{log['purpose'][:20]}: {log['tokens']} tokens (${log['cost']:.4f})")
+
 # === FIRST STREAMLIT COMMAND ===
 st.set_page_config(
     page_title="E22 Weekly Brief",
@@ -183,7 +262,7 @@ def render_academic_paper_card(paper: dict):
     """, unsafe_allow_html=True)
 
 
-# === CORE FUNCTIONS ===
+# === CORE FUNCTIONS WITH COST CONTROLS ===
 
 def search_tavily(params):
     """Search using Tavily API"""
@@ -209,21 +288,37 @@ def search_tavily(params):
 
 
 def extract_trends(text):
-    """Extract trend tags using GPT"""
+    """Extract trend tags using GPT (with cost controls)"""
+    if not check_cost_limits():
+        return []
+    
+    # Use cheaper model for trend extraction
+    model = "gpt-3.5-turbo" if COST_CONTROLS['use_gpt35_for_trends'] else "gpt-4"
+    
     prompt = f"""
 Extract 2–5 short trend tags (1–3 words each) summarizing the main themes from the following text.
 Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
 
 === TEXT START ===
-{text}
+{text[:2000]}
 === TEXT END ===
     """
     try:
         response = openai.chat.completions.create(
-            model="gpt-4",
+            model=model,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.3
+            temperature=COST_CONTROLS['temperature'],
+            max_tokens=100  # Trends are short
         )
+        
+        # Track usage
+        track_openai_usage(
+            model,
+            response.usage.prompt_tokens,
+            response.usage.completion_tokens,
+            "Trend Extraction"
+        )
+        
         raw_output = response.choices[0].message.content.strip()
         # Clean up response
         if raw_output.startswith("```"):
@@ -236,10 +331,18 @@ Return only a JSON list of strings, like ["AI in Finance", "Cloud Migration"].
 
 
 def summarize_section(section_name, article_texts, article_links, article_titles, prompts):
-    """Summarize a newsletter section using GPT"""
+    """Summarize a newsletter section using GPT (with cost controls)"""
+    if not check_cost_limits():
+        return f"(Skipped due to cost limits: {section_name})", []
+    
+    # Choose model based on config
+    model = "gpt-4" if COST_CONTROLS['use_gpt4_for_summaries'] else "gpt-3.5-turbo"
+    
     combined_text = "\n\n".join(article_texts)
-    if len(combined_text) > 48000:
-        combined_text = combined_text[:48000]
+    # Limit text to control costs
+    max_chars = 30000 if model == "gpt-4" else 40000
+    if len(combined_text) > max_chars:
+        combined_text = combined_text[:max_chars]
     
     sample_citations = "\n".join([f"[{i+1}] {title}" for i, title in enumerate(article_titles[:5])])
     prompt_template = prompts.get(section_name, prompts.get("default", ""))
@@ -252,10 +355,20 @@ def summarize_section(section_name, article_texts, article_links, article_titles
     
     try:
         response = openai.chat.completions.create(
-            model="gpt-4",
+            model=model,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.5
+            temperature=COST_CONTROLS['temperature'],
+            max_tokens=COST_CONTROLS['max_tokens_per_request']
         )
+        
+        # Track usage
+        track_openai_usage(
+            model,
+            response.usage.prompt_tokens,
+            response.usage.completion_tokens,
+            f"Summary: {section_name[:20]}"
+        )
+        
         summary_text = response.choices[0].message.content.strip()
         # Bold the labels
         for label in ["Summary:", "Full Brief:", "Key Themes:", "Key Highlights:", "Consulting Relevance:"]:
@@ -266,23 +379,26 @@ def summarize_section(section_name, article_texts, article_links, article_titles
 
 
 def generate_academic_summary(papers_by_topic):
-    """Generate GPT summary of academic papers"""
+    """Generate GPT summary of academic papers (with cost controls)"""
+    if not check_cost_limits():
+        return "Academic summary skipped due to cost limits."
+    
     if not papers_by_topic or not any(papers_by_topic.values()):
         return "No recent academic papers found for this period."
     
-    # Compile papers info
+    # Compile papers info (limit to save tokens)
     papers_text = ""
     for topic, papers in papers_by_topic.items():
         if papers:
             papers_text += f"\n\n### {topic}:\n"
-            for paper in papers[:3]:
+            for paper in papers[:2]:  # Only top 2 per topic
                 papers_text += f"- {paper['title']} ({paper['year']}, {paper['citation_count']} citations)\n"
     
     prompt = f"""
 You are an academic research analyst. Summarize the key research themes and findings from recent academic papers.
 
 **Papers:**
-{papers_text}
+{papers_text[:3000]}
 
 **Provide:**
 1. **Research Highlights** (2-3 sentences on key developments)
@@ -293,11 +409,21 @@ Keep it concise and business-focused.
     """
     
     try:
+        model = "gpt-3.5-turbo"  # Use cheaper model for academic summary
         response = openai.chat.completions.create(
-            model="gpt-4",
+            model=model,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.5
+            temperature=COST_CONTROLS['temperature'],
+            max_tokens=800
         )
+        
+        track_openai_usage(
+            model,
+            response.usage.prompt_tokens,
+            response.usage.completion_tokens,
+            "Academic Summary"
+        )
+        
         return response.choices[0].message.content.strip()
     except Exception as e:
         return f"Error generating academic summary: {e}"
@@ -342,7 +468,15 @@ def calculate_kpi_metrics():
 
 
 def generate_newsletter():
-    """Main newsletter generation function"""
+    """Main newsletter generation function (with cost controls)"""
+    # Reset usage tracking for new run
+    st.session_state['openai_usage'] = {
+        'total_tokens': 0,
+        'api_calls': 0,
+        'estimated_cost': 0.0,
+        'calls_log': []
+    }
+    
     st.info("📥 Generating this week's newsletter...")
     
     progress_bar = st.progress(0)
@@ -392,20 +526,27 @@ def generate_newsletter():
         if texts:
             summary, used_links = summarize_section(section, texts, links, titles, SECTION_PROMPTS)
             section_outputs.append((section, summary, used_links))
-            trends = extract_trends(summary)
-            all_trend_tags.extend(trends)
+            
+            # Extract trends (only for first 4 sections to save costs)
+            if idx < 4:
+                trends = extract_trends(summary)
+                all_trend_tags.extend(trends)
         else:
             section_outputs.append((section, "No updates today.", []))
     
-    # Fetch academic papers
+    # Fetch academic papers (optional - can be disabled to save time)
     status_text.text("📚 Fetching academic papers...")
     progress_bar.progress(0.9)
     
-    academic_results = search_academic_papers_by_topics(
-        ACADEMIC_TOPICS,
-        papers_per_topic=5,
-        days_back=30
-    )
+    try:
+        academic_results = search_academic_papers_by_topics(
+            ACADEMIC_TOPICS,
+            papers_per_topic=3,  # Reduced from 5 to save time
+            days_back=30
+        )
+    except Exception as e:
+        st.warning(f"Academic paper search skipped: {e}")
+        academic_results = {}
     
     # Save data
     status_text.text("💾 Saving newsletter data...")
@@ -441,8 +582,11 @@ def generate_newsletter():
     st.session_state['newsletter_generated'] = True
     
     progress_bar.progress(1.0)
-    status_text.text("✅ Newsletter generation complete!")
-    st.success("✅ Newsletter generated successfully!")
+    
+    # Display final cost
+    usage = st.session_state['openai_usage']
+    status_text.text(f"✅ Complete! Used {usage['total_tokens']:,} tokens (${usage['estimated_cost']:.4f})")
+    st.success(f"✅ Newsletter generated! OpenAI cost: ${usage['estimated_cost']:.4f}")
 
 
 # === MAIN APP ===
@@ -475,6 +619,9 @@ if st.sidebar.button("🔄 Regenerate Newsletter"):
     st.session_state['newsletter_generated'] = False
     generate_newsletter()
     st.rerun()
+
+# Display cost dashboard
+display_cost_dashboard()
 
 # Generate newsletter if not exists
 if not st.session_state['newsletter_generated']:
@@ -543,7 +690,7 @@ elif selected_section == "intel":
                     "time_range": "week"
                 })
                 
-                if results:
+                if results and check_cost_limits():
                     full_text = "\n\n".join([r["content"] for r in results if r.get("content")])
                     link_list = "\n".join([r["url"] for r in results if r.get("url")])
                     
@@ -567,13 +714,22 @@ You are an industry analyst. Analyze recent developments at {company}.
 {link_list}
 
 === CONTENT ===
-{full_text[:8000]}
+{full_text[:6000]}
                     """
                     
+                    model = "gpt-3.5-turbo"  # Use cheaper model for client intel
                     response = openai.chat.completions.create(
-                        model="gpt-4",
+                        model=model,
                         messages=[{"role": "user", "content": gpt_prompt}],
-                        temperature=0.5
+                        temperature=0.5,
+                        max_tokens=1000
+                    )
+                    
+                    track_openai_usage(
+                        model,
+                        response.usage.prompt_tokens,
+                        response.usage.completion_tokens,
+                        f"Client Intel: {company}"
                     )
                     
                     summary = response.choices[0].message.content.strip()

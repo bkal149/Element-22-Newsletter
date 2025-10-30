@@ -61,7 +61,7 @@ class AcademicSearcher:
                         "year": paper.get("year"),
                         "citation_count": paper.get("citationCount", 0),
                         "venue": paper.get("venue", ""),
-                        "publication_date": paper.get("publicationDate", ""),
+                        "publication_date": paper.get("publicationDate") or None,
                         "url": paper.get("url", ""),
                         "arxiv_id": paper.get("externalIds", {}).get("ArXiv"),
                         "doi": paper.get("externalIds", {}).get("DOI"),
@@ -210,10 +210,11 @@ class AcademicSearcher:
                 unique_papers.append(paper)
         
         # Sort by citation count (highest first), then by date
+        # FIX: Handle None values in publication_date to prevent TypeError
         unique_papers.sort(
             key=lambda x: (
                 -x.get("citation_count", 0),
-                x.get("publication_date", "")
+                x.get("publication_date") or "1900-01-01"  # Default old date for None values
             ),
             reverse=False
         )
