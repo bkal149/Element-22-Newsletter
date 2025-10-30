@@ -1,7 +1,0 @@
-streamlit
-requests
-openai
-python-dotenv
-matplotlib
-pandas
-yfinance
