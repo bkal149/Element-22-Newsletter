@@ -133,7 +133,7 @@ def save_cached_newsletter(data):
 
 # === FIRST STREAMLIT COMMAND ===
 st.set_page_config(
-    page_title="E22 Weekly Brief",
+    page_title="Element22 Weekly Brief",
     layout="wide",
     initial_sidebar_state="expanded",
     page_icon="📊"
@@ -178,6 +178,9 @@ def load_css():
 
 load_css()
 
+# === RENDER APP HEADER (at the top of every page) ===
+render_app_header()
+
 # === SETUP ===
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -197,14 +200,52 @@ trend_csv_path = os.path.join(trend_dir, "trend_log.csv")
 
 # === HELPER FUNCTIONS ===
 
-def render_hero_header():
-    """Render the gradient hero header"""
+def render_app_header():
+    """Render the application header with Element22 logo"""
+    year, week_num, _ = datetime.now().isocalendar()
     today = datetime.now().strftime('%B %d, %Y')
+    
+    # Check if logo exists
+    logo_path = os.path.join(base_dir, "assets", "element22_logo.png")
+    
+    if os.path.exists(logo_path):
+        # Convert logo to base64 for embedding
+        import base64
+        with open(logo_path, "rb") as f:
+            logo_data = base64.b64encode(f.read()).decode()
+        
+        logo_html = f'<img src="data:image/png;base64,{logo_data}" class="app-logo" alt="Element22 Logo">'
+    else:
+        # Fallback text logo
+        logo_html = '<div style="font-size: 2rem; font-weight: 800; color: white;">element<span style="color: #0056b3;">22</span></div>'
+    
+    st.markdown(f"""
+    <div class="app-header">
+        <div class="app-header-left">
+            {logo_html}
+            <div class="app-header-content">
+                <h1 class="app-title">Weekly Intelligence Brief</h1>
+                <p class="app-subtitle">Financial Services & Technology Insights</p>
+            </div>
+        </div>
+        <div class="app-header-right">
+            <div class="header-badge">Week {week_num}, {datetime.now().year}</div>
+            <div class="header-badge">{today}</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_hero_header():
+    """Render hero header for dashboard view"""
+    year, week_num, _ = datetime.now().isocalendar()
+    today = datetime.now().strftime('%B %d, %Y')
+    
     st.markdown(f"""
     <div class="hero-header">
-        <h1>🗞️ E22 Weekly Brief</h1>
-        <p>Your Strategic Intelligence Digest</p>
-        <p class="subtitle">Week {week_num}, {year} • {today}</p>
+        <h1>📊 Executive Dashboard</h1>
+        <p>Week {week_num}, {year} • {today}</p>
+        <p class="subtitle">Real-time insights from financial services, technology, and consulting sectors</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -720,7 +761,7 @@ if 'newsletter_generated' not in st.session_state:
     st.session_state['newsletter_generated'] = False
 
 # Render hero header
-render_hero_header()
+render_app_header()
 
 # Sidebar navigation
 st.sidebar.title("🧭 Navigation")
@@ -759,8 +800,9 @@ if not st.session_state['newsletter_generated']:
 
 # === SECTION: DASHBOARD ===
 if selected_section == "dashboard":
-    st.markdown("## 📊 Executive Dashboard")
+    render_hero_header()  # Show hero header only on dashboard
     
+    st.markdown("## 📈 Key Performance Indicators")
     metrics = calculate_kpi_metrics()
     render_kpi_dashboard(metrics)
     
@@ -800,7 +842,8 @@ if selected_section == "dashboard":
 
 # === SECTION: CLIENT INTEL ===
 elif selected_section == "intel":
-    st.markdown("## 🔍 Client Intel Search")
+    st.markdown("## 🔍 Client Intelligence Briefing")
+    st.markdown("---")
     
     st.markdown("""
     <div class="info-box info">
@@ -876,6 +919,7 @@ You are an industry analyst. Analyze recent developments at {company}.
 # === SECTION: NEWSLETTER ===
 elif selected_section == "newsletter":
     st.markdown("## 📬 This Week's Newsletter")
+    st.markdown("---")
     
     if 'section_outputs' in st.session_state:
         section_icons = {
@@ -962,7 +1006,8 @@ elif selected_section == "academic":
 
 # === SECTION: TRENDS ===
 elif selected_section == "trends":
-    st.markdown("## 📈 Trend Analysis")
+    st.markdown("## 📈 Trending Topics Analysis")
+    st.markdown("---")
     
     if os.path.exists(trend_csv_path):
         trend_df = pd.read_csv(trend_csv_path)
@@ -976,6 +1021,7 @@ elif selected_section == "trends":
 # === SECTION: ARCHIVE ===
 elif selected_section == "archive":
     st.markdown("## 📁 Newsletter Archive")
+    st.markdown("---")
     
     if os.path.exists(html_dir):
         html_files = sorted(
