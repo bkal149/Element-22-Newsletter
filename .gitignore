@@ -9,6 +9,7 @@ __pycache__/
 newsletter/html/
 newsletter/raw/
 newsletter/trends/
+newsletter/.cache_*.pkl
 
 # MacOS system files (safe ignore)
 .DS_Store

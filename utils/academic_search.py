@@ -209,14 +209,12 @@ class AcademicSearcher:
                 seen_titles.add(title_key)
                 unique_papers.append(paper)
         
-        # Sort by citation count (highest first), then by date
-        # FIX: Handle None values in publication_date to prevent TypeError
+        # Sort by citation count (highest first), then by recency
         unique_papers.sort(
             key=lambda x: (
                 -x.get("citation_count", 0),
-                x.get("publication_date") or "1900-01-01"  # Default old date for None values
-            ),
-            reverse=False
+                -(int(x.get("year", 1900)))  # More recent papers first
+            )
         )
         
         return unique_papers
@@ -258,13 +256,12 @@ def search_academic_papers_by_topics(
 
 # Predefined academic search topics
 ACADEMIC_TOPICS = {
-    "AI in Finance": "artificial intelligence machine learning finance financial services",
-    "Data Management": "data management governance architecture metadata financial",
-    "Financial Technology": "fintech blockchain digital payments financial technology",
-    "Regulatory Technology": "regtech compliance regulation financial technology",
-    "Machine Learning Applications": "machine learning deep learning neural networks finance"
+    "AI in Finance": "artificial intelligence OR machine learning OR deep learning) AND (finance OR banking OR trading OR financial services OR investment OR portfolio management",
+    "Data Management": "(data governance OR data architecture OR metadata management OR data quality) AND (enterprise OR financial services OR banking)",
+    "Financial Technology": "(fintech OR digital banking OR payments OR blockchain OR cryptocurrency) AND (financial services OR banking)",
+    "Regulatory Technology": "(regtech OR compliance technology OR regulatory compliance OR AML OR KYC) AND financial",
+    "Risk Management": "(risk management OR credit risk OR market risk OR operational risk) AND (machine learning OR AI OR analytics) AND finance"
 }
-
 
 if __name__ == "__main__":
     # Test the module

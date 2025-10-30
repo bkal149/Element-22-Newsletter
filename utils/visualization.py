@@ -79,40 +79,68 @@ def create_market_performance_chart(
     tickers = {
         "^GSPC": {"name": "S&P 500", "color": "#3366cc"},
         "^IXIC": {"name": "NASDAQ", "color": "#dc3912"},
-        "BTC-USD": {"name": "Bitcoin", "color": "#ff9900"}
+        "^DJI": {"name": "Dow Jones", "color": "#109618"}
     }
     
     fig = go.Figure()
+    has_data = False
     
     for ticker, info in tickers.items():
         try:
-            # Download data
+            # Download data with proper parameters
             data = yf.download(
                 ticker,
                 start=start_date,
+                end=datetime.now().strftime('%Y-%m-%d'),
                 interval="1d",
                 progress=False,
                 show_errors=False
             )
             
-            if not data.empty:
-                # Normalize to 100 at start
-                normalized = (data["Close"] / data["Close"].iloc[0]) * 100
+            if not data.empty and len(data) > 0:
+                # Handle multi-index columns from yfinance
+                if isinstance(data.columns, pd.MultiIndex):
+                    close_col = ('Close', ticker)
+                    if close_col in data.columns:
+                        close_data = data[close_col]
+                    else:
+                        close_data = data['Close']
+                else:
+                    close_data = data['Close']
                 
-                fig.add_trace(go.Scatter(
-                    x=normalized.index,
-                    y=normalized.values,
-                    mode='lines',
-                    name=info["name"],
-                    line=dict(color=info["color"], width=2.5),
-                    hovertemplate=(
-                        f'<b>{info["name"]}</b><br>' +
-                        'Date: %{x|%Y-%m-%d}<br>' +
-                        'Performance: %{y:.2f}%<extra></extra>'
-                    )
-                ))
+                # Remove any NaN values
+                close_data = close_data.dropna()
+                
+                if len(close_data) > 0:
+                    # Normalize to 100 at start
+                    normalized = (close_data / close_data.iloc[0]) * 100
+                    
+                    fig.add_trace(go.Scatter(
+                        x=normalized.index,
+                        y=normalized.values,
+                        mode='lines',
+                        name=info["name"],
+                        line=dict(color=info["color"], width=2.5),
+                        hovertemplate=(
+                            f'<b>{info["name"]}</b><br>' +
+                            'Date: %{x|%Y-%m-%d}<br>' +
+                            'Performance: %{y:.2f}%<extra></extra>'
+                        )
+                    ))
+                    has_data = True
         except Exception as e:
             print(f"Error fetching {ticker}: {e}")
+            continue
+    
+    if not has_data:
+        # Create a placeholder figure
+        fig.add_annotation(
+            text="Market data temporarily unavailable",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
+            showarrow=False,
+            font=dict(size=16, color='#6c757d')
+        )
     
     fig.update_layout(
         title={

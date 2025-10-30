@@ -8,6 +8,8 @@ import pandas as pd
 import plotly.graph_objects as go
 from io import BytesIO
 import sys
+import hashlib
+import pickle
 
 # Add utils to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'utils'))
@@ -98,6 +100,36 @@ def display_cost_dashboard():
         with st.sidebar.expander("📊 Usage Details"):
             for log in usage['calls_log'][-5:]:  # Show last 5 calls
                 st.text(f"{log['purpose'][:20]}: {log['tokens']} tokens (${log['cost']:.4f})")
+
+# === CACHE SYSTEM ===
+def get_cache_key():
+    """Generate cache key for current week"""
+    year, week_num, _ = datetime.now().isocalendar()
+    return f"{year}-W{week_num}"
+
+def load_cached_newsletter():
+    """Load cached newsletter if exists"""
+    cache_key = get_cache_key()
+    cache_file = os.path.join(base_dir, "newsletter", f".cache_{cache_key}.pkl")
+    
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, "rb") as f:
+                return pickle.load(f)
+        except:
+            pass
+    return None
+
+def save_cached_newsletter(data):
+    """Save newsletter to cache"""
+    cache_key = get_cache_key()
+    cache_file = os.path.join(base_dir, "newsletter", f".cache_{cache_key}.pkl")
+    
+    try:
+        with open(cache_file, "wb") as f:
+            pickle.dump(data, f)
+    except Exception as e:
+        print(f"Cache save failed: {e}")
 
 # === FIRST STREAMLIT COMMAND ===
 st.set_page_config(
@@ -207,6 +239,10 @@ def render_kpi_dashboard(metrics: dict):
 
 def render_section_card(title: str, content: str, icon: str, references: list = None):
     """Render a content section as a card"""
+    # Convert **text** to <strong>text</strong> for proper HTML rendering
+    import re
+    content_html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', content)
+    
     st.markdown(f"""
     <div class="section-card">
         <div class="section-header">
@@ -214,7 +250,7 @@ def render_section_card(title: str, content: str, icon: str, references: list = 
             <h2 class="section-title">{title}</h2>
         </div>
         <div class="section-content">
-            {content}
+            {content_html}
         </div>
     """, unsafe_allow_html=True)
     
@@ -345,8 +381,14 @@ def summarize_section(section_name, article_texts, article_links, article_titles
         combined_text = combined_text[:max_chars]
     
     sample_citations = "\n".join([f"[{i+1}] {title}" for i, title in enumerate(article_titles[:5])])
-    prompt_template = prompts.get(section_name, prompts.get("default", ""))
-    prompt = prompt_template.format(
+    
+    # Create modified prompt that removes URL requirements
+    base_prompt = prompts.get(section_name, prompts.get("default", ""))
+    # Remove URL citation instructions
+    modified_prompt = base_prompt.replace("(**Source Title**, **https://source.com**)", "[numbered reference]")
+    modified_prompt = modified_prompt.replace("Use bold source names and full, clickable URLs only.", "Use numbered references [1], [2], etc. Do NOT include URLs in the main text.")
+    
+    prompt = modified_prompt.format(
         section_name=section_name,
         today=datetime.now().strftime('%B %d, %Y'),
         combined_text=combined_text,
@@ -370,9 +412,16 @@ def summarize_section(section_name, article_texts, article_links, article_titles
         )
         
         summary_text = response.choices[0].message.content.strip()
+        
+        # Remove any remaining URLs from the text
+        import re
+        summary_text = re.sub(r'\(?\*\*https?://[^\s\)]+\*\*\)?', '', summary_text)
+        summary_text = re.sub(r'https?://[^\s\)]+', '', summary_text)
+        
         # Bold the labels
         for label in ["Summary:", "Full Brief:", "Key Themes:", "Key Highlights:", "Consulting Relevance:"]:
             summary_text = summary_text.replace(label, f"**{label}**")
+        
         return summary_text, article_links[:5]
     except Exception as e:
         return f"(Error summarizing {section_name}: {e})", []
@@ -468,7 +517,14 @@ def calculate_kpi_metrics():
 
 
 def generate_newsletter():
-    """Main newsletter generation function (with cost controls)"""
+    """Main newsletter generation function (with cost controls and caching)"""
+    # Check if we have cached data
+    cached_data = load_cached_newsletter()
+    if cached_data:
+        st.session_state.update(cached_data)
+        st.success("✅ Newsletter loaded from cache (already generated this week)")
+        return
+    
     # Reset usage tracking for new run
     st.session_state['openai_usage'] = {
         'total_tokens': 0,
@@ -580,6 +636,15 @@ def generate_newsletter():
     st.session_state['section_outputs'] = section_outputs
     st.session_state['academic_results'] = academic_results
     st.session_state['newsletter_generated'] = True
+    
+    # Cache the generated newsletter
+    cache_data = {
+        'section_outputs': section_outputs,
+        'academic_results': academic_results,
+        'newsletter_generated': True,
+        'openai_usage': st.session_state['openai_usage']
+    }
+    save_cached_newsletter(cache_data)
     
     progress_bar.progress(1.0)
     
