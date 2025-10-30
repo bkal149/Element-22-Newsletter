@@ -180,68 +180,67 @@ def render_hero_header():
 
 
 def render_kpi_dashboard(metrics: dict):
-    """Render KPI dashboard with cards"""
+    """Render KPI metrics dashboard with improved layout"""
     st.markdown('<div class="kpi-container">', unsafe_allow_html=True)
     
-    kpis = [
-        {
-            "icon": "📰",
-            "value": metrics.get("articles", 0),
-            "label": "Articles Analyzed",
-            "change": metrics.get("articles_change", 0),
-            "card_type": "info"
-        },
-        {
-            "icon": "🔥",
-            "value": metrics.get("trends", 0),
-            "label": "Trending Topics",
-            "change": metrics.get("trends_change", 0),
-            "card_type": "accent"
-        },
-        {
-            "icon": "📚",
-            "value": metrics.get("papers", 0),
-            "label": "Academic Papers",
-            "change": metrics.get("papers_change", 0),
-            "card_type": "success"
-        },
-        {
-            "icon": "📈",
-            "value": f"{metrics.get('market_movement', 0):+.1f}%",
-            "label": "S&P 500 (Week)",
-            "change": None,
-            "card_type": "warning"
-        }
-    ]
+    col1, col2, col3, col4 = st.columns(4)
     
-    cols = st.columns(4)
-    for col, kpi in zip(cols, kpis):
-        with col:
-            change_html = ""
-            if kpi["change"] is not None:
-                change_class = "positive" if kpi["change"] >= 0 else "negative"
-                change_symbol = "↑" if kpi["change"] >= 0 else "↓"
-                change_html = f'<div class="kpi-change {change_class}">{change_symbol} {abs(kpi["change"])} vs last week</div>'
-            
-            st.markdown(f"""
-            <div class="kpi-card {kpi['card_type']}">
-                <div class="kpi-header">
-                    <span class="kpi-icon">{kpi['icon']}</span>
-                </div>
-                <div class="kpi-value">{kpi['value']}</div>
-                <div class="kpi-label">{kpi['label']}</div>
-                {change_html}
-            </div>
-            """, unsafe_allow_html=True)
+    with col1:
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-icon">📰</div>
+            <div class="kpi-label">Articles Analyzed</div>
+            <div class="kpi-value">{metrics['articles']}</div>
+            <div class="kpi-change positive">+{metrics['articles_change']} this week</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-icon">📊</div>
+            <div class="kpi-label">Trending Topics</div>
+            <div class="kpi-value">{metrics['trends']}</div>
+            <div class="kpi-change positive">+{metrics['trends_change']} new</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        # Make this clickable by wrapping in a button
+        if st.button(f"📚 Academic Papers: {metrics['papers']}", use_container_width=True):
+            st.session_state['nav_override'] = 'academic'
+            st.rerun()
+        st.markdown(f"""
+        <div style="text-align: center; color: #6c757d; font-size: 0.85em; margin-top: -10px;">
+            +{metrics['papers_change']} recent
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        movement_color = "positive" if metrics['market_movement'] >= 0 else "negative"
+        movement_symbol = "↑" if metrics['market_movement'] >= 0 else "↓"
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-icon">📈</div>
+            <div class="kpi-label">Market Movement</div>
+            <div class="kpi-value">{metrics['market_movement']:+.2f}%</div>
+            <div class="kpi-change {movement_color}">{movement_symbol} S&P 500 (5d)</div>
+        </div>
+        """, unsafe_allow_html=True)
     
     st.markdown('</div>', unsafe_allow_html=True)
 
 
 def render_section_card(title: str, content: str, icon: str, references: list = None):
     """Render a content section as a card"""
-    # Convert **text** to <strong>text</strong> for proper HTML rendering
     import re
+    
+    # Convert **text** to <strong>text</strong> for proper HTML rendering
     content_html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', content)
+    
+    # Remove any "Article Links:" sections from the content
+    content_html = re.sub(r'<strong>Article Links?:?</strong>\s*', '', content_html)
+    content_html = re.sub(r'Article Links?:?\s*', '', content_html)
     
     st.markdown(f"""
     <div class="section-card">
@@ -254,7 +253,8 @@ def render_section_card(title: str, content: str, icon: str, references: list = 
         </div>
     """, unsafe_allow_html=True)
     
-    if references:
+    # Only show references expander if we have references and it's not Market & Macro Watch
+    if references and title != "Market & Macro Watch":
         with st.expander(f"📎 View {len(references)} Sources"):
             for i, ref in enumerate(references, 1):
                 st.markdown(f"[{i}] [{ref}]({ref})")
@@ -263,40 +263,63 @@ def render_section_card(title: str, content: str, icon: str, references: list = 
 
 
 def render_academic_paper_card(paper: dict):
-    """Render a single academic paper card"""
-    authors_str = ", ".join(paper["authors"][:3])
-    if len(paper["authors"]) > 3:
-        authors_str += f" et al. ({len(paper['authors'])} authors)"
+    """Render an academic paper as a card"""
+    import re
     
-    abstract_preview = paper["abstract"][:300] + "..." if len(paper["abstract"]) > 300 else paper["abstract"]
+    # Extract paper details
+    title = paper.get("title", "Untitled")
+    authors = paper.get("authors", [])
+    year = paper.get("year", "N/A")
+    citations = paper.get("citation_count", 0)
+    abstract = paper.get("abstract", "No abstract available.")
+    url = paper.get("url", "#")
+    source = paper.get("source", "Unknown")
     
-    # Build paper links
-    links_html = ""
-    if paper.get("url"):
-        links_html += f'<a href="{paper["url"]}" target="_blank" class="paper-link-btn">🔗 View Paper</a>'
-    if paper.get("arxiv_id"):
-        links_html += f'<a href="https://arxiv.org/abs/{paper["arxiv_id"]}" target="_blank" class="paper-link-btn">📄 arXiv</a>'
+    # Format authors
+    if isinstance(authors, list) and len(authors) > 0:
+        if len(authors) > 3:
+            author_str = f"{', '.join(authors[:3])}, et al."
+        else:
+            author_str = ', '.join(authors)
+    else:
+        author_str = "Unknown authors"
+    
+    # Clean abstract and convert markdown bold to HTML
+    abstract_clean = abstract.replace('\n', ' ').strip()
+    if len(abstract_clean) > 300:
+        abstract_clean = abstract_clean[:297] + "..."
+    
+    # Convert **text** to <strong>text</strong>
+    abstract_html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', abstract_clean)
+    
+    # Determine citation badge color
+    if citations > 100:
+        citation_color = "#28a745"
+    elif citations > 50:
+        citation_color = "#ffc107"
+    else:
+        citation_color = "#6c757d"
     
     st.markdown(f"""
-    <div class="paper-card">
-        <div class="paper-title">
-            <a href="{paper['url']}" target="_blank">{paper['title']}</a>
+    <div class="academic-paper-card">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+            <h3 style="margin: 0; color: #0056b3; font-size: 1.1em; flex: 1;">
+                <a href="{url}" target="_blank" style="text-decoration: none; color: #0056b3;">
+                    {title}
+                </a>
+            </h3>
+            <span style="background-color: {citation_color}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold; margin-left: 10px; white-space: nowrap;">
+                📊 {citations} citations
+            </span>
         </div>
-        <div class="paper-meta">
-            <span>👥 {authors_str}</span>
-            <span>📅 {paper['year']}</span>
-            <span class="badge citation">📊 {paper['citation_count']} citations</span>
-            <span class="badge venue">🏛️ {paper['venue']}</span>
+        <div style="color: #6c757d; font-size: 0.9em; margin-bottom: 8px;">
+            <strong>Authors:</strong> {author_str} • <strong>Year:</strong> {year} • <strong>Source:</strong> {source}
         </div>
-        <div class="paper-abstract">
-            {abstract_preview}
-        </div>
-        <div class="paper-links">
-            {links_html}
+        <div style="color: #495057; font-size: 0.95em; line-height: 1.6;">
+            {abstract_html}
         </div>
     </div>
     """, unsafe_allow_html=True)
-
 
 # === CORE FUNCTIONS WITH COST CONTROLS ===
 
@@ -490,28 +513,47 @@ def calculate_kpi_metrics():
         "market_movement": 0.0
     }
     
-    # Count articles from config
-    config_path = os.path.join(base_dir, "config", "e22_config.json")
-    if os.path.exists(config_path):
-        with open(config_path, "r") as f:
-            config = json.load(f)
-            metrics["articles"] = len(config.get("sources", {})) * 10  # Approximate
+    # Get actual article count from session state
+    if 'section_outputs' in st.session_state and st.session_state['section_outputs']:
+        # Count actual articles processed
+        total_articles = 0
+        for _, _, references in st.session_state['section_outputs']:
+            if references:
+                total_articles += len(references)
+        metrics["articles"] = total_articles
+    
+    # Count actual academic papers - FIX: Count all papers across all topics
+    if 'academic_results' in st.session_state and st.session_state['academic_results']:
+        total_papers = 0
+        for topic_name, papers in st.session_state['academic_results'].items():
+            if papers and isinstance(papers, list):
+                total_papers += len(papers)
+        metrics["papers"] = total_papers
+        print(f"✓ Academic paper count: {total_papers}")  # Debug output
     
     # Count trends
     if os.path.exists(trend_csv_path):
-        trend_df = pd.read_csv(trend_csv_path)
-        today_str = datetime.now().strftime('%Y-%m-%d')
-        metrics["trends"] = len(trend_df[trend_df["date"] == today_str]["tag"].unique())
+        try:
+            trend_df = pd.read_csv(trend_csv_path)
+            today_str = datetime.now().strftime('%Y-%m-%d')
+            current_week_trends = trend_df[trend_df["date"] == today_str]
+            if not current_week_trends.empty:
+                metrics["trends"] = len(current_week_trends["tag"].unique())
+        except Exception as e:
+            print(f"Error reading trends: {e}")
     
-    # Market movement (S&P 500 weekly)
+    # Market movement (S&P 500 weekly) - calculate actual percentage change
     try:
         import yfinance as yf
         sp500 = yf.Ticker("^GSPC")
         hist = sp500.history(period="5d")
-        if len(hist) >= 2:
-            metrics["market_movement"] = ((hist["Close"].iloc[-1] / hist["Close"].iloc[0]) - 1) * 100
-    except:
-        pass
+        if not hist.empty and len(hist) >= 2:
+            week_start = hist["Close"].iloc[0]
+            week_end = hist["Close"].iloc[-1]
+            metrics["market_movement"] = ((week_end / week_start) - 1) * 100
+    except Exception as e:
+        print(f"Error fetching market data: {e}")
+        metrics["market_movement"] = 0.0
     
     return metrics
 
@@ -675,8 +717,14 @@ nav_options = [
     ("📁 Archive", "archive")
 ]
 
-selected_nav = st.sidebar.radio("Go to:", [opt[0] for opt in nav_options])
-selected_section = [opt[1] for opt in nav_options if opt[0] == selected_nav][0]
+# Check if we have a nav override from KPI click
+if 'nav_override' in st.session_state:
+    selected_section = st.session_state['nav_override']
+    selected_nav = [opt[0] for opt in nav_options if opt[1] == selected_section][0]
+    del st.session_state['nav_override']
+else:
+    selected_nav = st.sidebar.radio("Go to:", [opt[0] for opt in nav_options])
+    selected_section = [opt[1] for opt in nav_options if opt[0] == selected_nav][0]
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### ⚙️ Actions")

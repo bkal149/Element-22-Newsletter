@@ -87,29 +87,17 @@ def create_market_performance_chart(
     
     for ticker, info in tickers.items():
         try:
-            # Download data with proper parameters
-            data = yf.download(
-                ticker,
+            # Download data with explicit parameters
+            stock = yf.Ticker(ticker)
+            data = stock.history(
                 start=start_date,
                 end=datetime.now().strftime('%Y-%m-%d'),
-                interval="1d",
-                progress=False,
-                show_errors=False
+                interval="1d"
             )
             
-            if not data.empty and len(data) > 0:
-                # Handle multi-index columns from yfinance
-                if isinstance(data.columns, pd.MultiIndex):
-                    close_col = ('Close', ticker)
-                    if close_col in data.columns:
-                        close_data = data[close_col]
-                    else:
-                        close_data = data['Close']
-                else:
-                    close_data = data['Close']
-                
-                # Remove any NaN values
-                close_data = close_data.dropna()
+            if data is not None and not data.empty and len(data) > 0:
+                # Get close prices
+                close_data = data['Close'].dropna()
                 
                 if len(close_data) > 0:
                     # Normalize to 100 at start
@@ -124,27 +112,31 @@ def create_market_performance_chart(
                         hovertemplate=(
                             f'<b>{info["name"]}</b><br>' +
                             'Date: %{x|%Y-%m-%d}<br>' +
-                            'Performance: %{y:.2f}%<extra></extra>'
+                            'Performance: %{y:.2f}<extra></extra>'
                         )
                     ))
                     has_data = True
+                    print(f"✓ Successfully loaded data for {info['name']}")
         except Exception as e:
-            print(f"Error fetching {ticker}: {e}")
+            print(f"✗ Error fetching {ticker}: {str(e)}")
             continue
     
     if not has_data:
-        # Create a placeholder figure
+        # Create a placeholder figure with message
         fig.add_annotation(
-            text="Market data temporarily unavailable",
+            text="Market data temporarily unavailable.<br>Please check your internet connection.",
             xref="paper", yref="paper",
             x=0.5, y=0.5,
             showarrow=False,
             font=dict(size=16, color='#6c757d')
         )
+        # Set a default range so the plot still renders
+        fig.update_xaxes(range=[0, 1])
+        fig.update_yaxes(range=[0, 1])
     
     fig.update_layout(
         title={
-            'text': 'YTD Market Performance (Normalized)',
+            'text': 'YTD Market Performance (Normalized to 100)',
             'x': 0.5,
             'xanchor': 'center',
             'font': {'size': 18, 'color': '#0056b3', 'family': 'Arial'}
