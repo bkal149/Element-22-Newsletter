@@ -882,29 +882,59 @@ def generate_newsletter():
 
 # === MAIN APP ===
 
-# Initialize session state
+# === Load CSS ===
+load_css()
+
+# === INITIALIZE SESSION STATE ===
 if 'newsletter_generated' not in st.session_state:
     st.session_state['newsletter_generated'] = False
-
-# Render navigation header on all pages except dashboard
 if 'selected_section' not in st.session_state:
     st.session_state['selected_section'] = 'dashboard'
 
-# Get current section from navigation
-selected_nav = st.sidebar.radio("Go to:", [opt[0] for opt in nav_options])
+# === NAVIGATION OPTIONS ===
+nav_options = [
+    ("📊 Dashboard", "dashboard"),
+    ("🔍 Client Intel", "intel"),
+    ("📬 Newsletter", "newsletter"),
+    ("📚 Academic Papers", "academic"),
+    ("📈 Trending Topics", "trends"),
+    ("📁 Archive", "archive")
+]
+
+# === SIDEBAR NAVIGATION ===
+st.sidebar.title("Navigation")
+selected_nav = st.sidebar.radio("Go to:", [opt[0] for opt in nav_options], index=0)
 selected_section = [opt[1] for opt in nav_options if opt[0] == selected_nav][0]
 
-# Update all navigation sections to include header:
-selected_section = st.session_state.get('nav_override', selected_section)
+# Check if we have a nav override from KPI click
+if 'nav_override' in st.session_state:
+    selected_section = st.session_state['nav_override']
+    # Update the radio selection to match
+    try:
+        selected_nav = [opt[0] for opt in nav_options if opt[1] == selected_section][0]
+    except IndexError:
+        pass
+    del st.session_state['nav_override']
 
-# === RENDER HEADER ON ALL PAGES ===
-if selected_section != "dashboard":
+# Update session state
+st.session_state['selected_section'] = selected_section
+
+# === RENDER HEADER ===
+if selected_section == "dashboard":
+    render_hero_header()
+else:
     render_app_header()
 
+# === SIDEBAR ACTIONS ===
 st.sidebar.markdown("---")
 st.sidebar.markdown("### ⚙️ Actions")
 if st.sidebar.button("🔄 Regenerate Newsletter"):
     st.session_state['newsletter_generated'] = False
+    # Clear cache
+    cache_key = get_cache_key()
+    cache_file = os.path.join(base_dir, "newsletter", f".cache_{cache_key}.pkl")
+    if os.path.exists(cache_file):
+        os.remove(cache_file)
     generate_newsletter()
     st.rerun()
 
@@ -917,9 +947,6 @@ if not st.session_state['newsletter_generated']:
 
 # === SECTION: DASHBOARD ===
 if selected_section == "dashboard":
-    render_app_header()  # Header for dashboard too
-    render_hero_header()  # Plus the hero section
-    
     # KPI Section
     st.markdown('<div class="content-section">', unsafe_allow_html=True)
     st.markdown("""
@@ -980,7 +1007,6 @@ if selected_section == "dashboard":
 
 # === SECTION: CLIENT INTEL ===
 elif selected_section == "intel":
-    # Header already rendered above
     st.markdown("## 🔍 Client Intelligence Briefing")
     st.markdown("---")
     
@@ -1057,42 +1083,49 @@ You are an industry analyst. Analyze recent developments at {company}.
 
 # === SECTION: NEWSLETTER ===
 elif selected_section == "newsletter":
-    # Header already rendered above
     st.markdown("## 📬 This Week's Newsletter")
     st.markdown("---")
     
-    if os.path.exists(html_path):
-        # ... existing code ...
-        
-        # When rendering sections, ensure references are passed:
-        for section_name, section_data in st.session_state['newsletter_content'].items():
+    if 'section_outputs' in st.session_state and st.session_state['section_outputs']:
+        for section_name, summary, references in st.session_state['section_outputs']:
             icon = {
-                'Financial Services Transformation': '🏦',
-                'Consulting & Advisory': '📊',
-                'Technology & Innovation': '💻',
                 'Market & Macro Watch': '📈',
-                'Research Highlights': '📚'
+                'Financial Services Transformation': '🏦',
+                'AI & Automation in Financial Services': '🤖',
+                'Consulting & Advisory Trends': '📊',
+                'Innovation & Tech Startups': '💡',
+                'Data Privacy & Regulatory Compliance': '🔒',
+                'Enterprise Data Management': '🗄️',
+                'Policy & Public Sector Data': '🏛️'
             }.get(section_name, '📄')
             
-            content = section_data.get('content', '')
-            references = section_data.get('references', [])  # Make sure this is included
-            
-            render_section_card(section_name, content, icon, references)
+            render_section_card(section_name, summary, icon, references)
+        
+        # Add academic papers summary
+        if 'academic_results' in st.session_state and st.session_state['academic_results']:
+            academic_summary = generate_academic_summary(st.session_state['academic_results'])
+            st.markdown("""
+            <div class="section-card">
+                <div class="section-header">
+                    <span class="section-icon">📚</span>
+                    <h2 class="section-title">Research Highlights</h2>
+                </div>
+                <div class="section-content">
+                    """ + academic_summary + """
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
     else:
-        st.info("Newsletter not generated yet. Please check back later.")
+        st.info("Newsletter not generated yet. Click 'Regenerate Newsletter' in the sidebar.")
 
 # === SECTION: ACADEMIC PAPERS ===
 elif selected_section == "academic":
-    # Header already rendered above
     st.markdown("## 📚 Recent Academic Papers")
     st.markdown("---")
     
     if 'academic_results' not in st.session_state or not st.session_state['academic_results']:
         st.info("No academic papers available. Generate newsletter first.")
     else:
-        # NO FILTERS - Just display papers
-        st.markdown("---")
-        
         # Collect all papers
         all_papers = []
         for topic, papers in st.session_state['academic_results'].items():
@@ -1123,7 +1156,6 @@ elif selected_section == "academic":
 
 # === SECTION: TRENDS ===
 elif selected_section == "trends":
-    # Header already rendered above
     st.markdown("## 📈 Trending Topics Analysis")
     st.markdown("---")
     
@@ -1131,34 +1163,87 @@ elif selected_section == "trends":
         trend_df = pd.read_csv(trend_csv_path)
         today_str = datetime.now().strftime('%Y-%m-%d')
         
-        # Comparison chart
-        st.markdown("### Trend Comparison")
-        fig = create_trend_comparison_chart(trend_df, today_str)
-        st.plotly_chart(fig, use_container_width=True)
+        # Show all trends over time
+        st.markdown("### Trend Timeline")
+        
+        # Group by date and tag
+        timeline_data = trend_df.groupby(['date', 'tag'])['count'].sum().reset_index()
+        
+        # Get top 10 tags overall
+        top_tags = trend_df.groupby('tag')['count'].sum().nlargest(10).index.tolist()
+        
+        # Filter to top tags
+        timeline_data = timeline_data[timeline_data['tag'].isin(top_tags)]
+        
+        if not timeline_data.empty:
+            fig = create_trend_comparison_chart(trend_df, today_str)
+            st.plotly_chart(fig, use_container_width=True)
+        
+        # Show current week's detailed breakdown
+        st.markdown("### This Week's Topics")
+        week_data = trend_df[trend_df['date'] == today_str]
+        if not week_data.empty:
+            week_summary = week_data.groupby('tag')['count'].sum().sort_values(ascending=False)
+            
+            for tag, count in week_summary.items():
+                st.markdown(f"**{tag}:** {count} mentions")
+        else:
+            st.info("No trends recorded for this week yet.")
+    else:
+        st.info("No trend data available. Generate a newsletter first.")
 
 # === SECTION: ARCHIVE ===
 elif selected_section == "archive":
-    # Header already rendered above
     st.markdown("## 📁 Newsletter Archive")
     st.markdown("---")
     
-    if os.path.exists(html_dir):
-        html_files = sorted(
-            [f for f in os.listdir(html_dir) if f.endswith(".html")],
+    # Look for cached newsletters
+    newsletter_dir = os.path.join(base_dir, "newsletter")
+    if os.path.exists(newsletter_dir):
+        cache_files = sorted(
+            [f for f in os.listdir(newsletter_dir) if f.startswith(".cache_") and f.endswith(".pkl")],
             reverse=True
         )
         
-        st.markdown(f"**{len(html_files)} past issues available**")
-        
-        for html_file in html_files[:10]:
-            if html_file == f"{year}-W{week_num}.html":
-                continue
+        if cache_files:
+            st.markdown(f"**{len(cache_files)} past issues available**")
             
-            week_label = html_file.replace(".html", "")
-            with st.expander(f"📅 Week {week_label}"):
-                file_path = os.path.join(html_dir, html_file)
-                with open(file_path, "r", encoding="utf-8") as f:
-                    st.markdown(f.read(), unsafe_allow_html=True)
+            for cache_file in cache_files:
+                week_label = cache_file.replace(".cache_", "").replace(".pkl", "")
+                
+                # Skip current week
+                if week_label == get_cache_key():
+                    continue
+                
+                with st.expander(f"📅 {week_label}"):
+                    try:
+                        with open(os.path.join(newsletter_dir, cache_file), "rb") as f:
+                            archived_data = pickle.load(f)
+                        
+                        if 'section_outputs' in archived_data:
+                            for section_name, summary, references in archived_data['section_outputs']:
+                                icon = {
+                                    'Market & Macro Watch': '📈',
+                                    'Financial Services Transformation': '🏦',
+                                    'AI & Automation in Financial Services': '🤖',
+                                    'Consulting & Advisory Trends': '📊',
+                                }.get(section_name, '📄')
+                                
+                                st.markdown(f"### {icon} {section_name}")
+                                st.markdown(summary.replace('\n', '<br>'), unsafe_allow_html=True)
+                                
+                                if references:
+                                    with st.expander(f"📎 {len(references)} Sources"):
+                                        for i, ref in enumerate(references, 1):
+                                            st.markdown(f"[{i}] {ref}")
+                                
+                                st.markdown("---")
+                    except Exception as e:
+                        st.error(f"Error loading archive: {e}")
+        else:
+            st.info("No archived newsletters found.")
+    else:
+        st.info("No archive directory found.")
 
 # Back to top button
 st.markdown("""
