@@ -141,10 +141,40 @@ st.set_page_config(
 
 # === LOAD CUSTOM CSS ===
 def load_css():
-    css_path = os.path.join(os.path.dirname(__file__), "assets", "styles.css")
-    if os.path.exists(css_path):
-        with open(css_path, "r") as f:
-            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    """Load custom CSS for the app"""
+    st.markdown("""
+    <style>
+    /* Existing CSS... */
+    
+    /* Hide the button text, keep only clickable area */
+    div[data-testid="column"] > div > button {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        height: 0 !important;
+        min-height: 0 !important;
+        opacity: 0 !important;
+        position: absolute !important;
+        z-index: 10 !important;
+        width: 100% !important;
+        cursor: pointer !important;
+    }
+    
+    /* Make KPI cards clickable */
+    .kpi-card {
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+    
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+    
+    /* Rest of existing CSS... */
+    </style>
+    """, unsafe_allow_html=True)
 
 load_css()
 
@@ -186,6 +216,9 @@ def render_kpi_dashboard(metrics: dict):
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
+        if st.button("📰", key="kpi_articles", help="View articles", use_container_width=True):
+            st.session_state['nav_override'] = 'intel'
+            st.rerun()
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-icon">📰</div>
@@ -196,6 +229,9 @@ def render_kpi_dashboard(metrics: dict):
         """, unsafe_allow_html=True)
     
     with col2:
+        if st.button("📊", key="kpi_trends", help="View trends", use_container_width=True):
+            st.session_state['nav_override'] = 'trends'
+            st.rerun()
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-icon">📊</div>
@@ -206,13 +242,15 @@ def render_kpi_dashboard(metrics: dict):
         """, unsafe_allow_html=True)
     
     with col3:
-        # Make this clickable by wrapping in a button
-        if st.button(f"📚 Academic Papers: {metrics['papers']}", use_container_width=True):
+        if st.button("📚", key="kpi_papers", help="View academic papers", use_container_width=True):
             st.session_state['nav_override'] = 'academic'
             st.rerun()
         st.markdown(f"""
-        <div style="text-align: center; color: #6c757d; font-size: 0.85em; margin-top: -10px;">
-            +{metrics['papers_change']} recent
+        <div class="kpi-card">
+            <div class="kpi-icon">📚</div>
+            <div class="kpi-label">Academic Papers</div>
+            <div class="kpi-value">{metrics['papers']}</div>
+            <div class="kpi-change positive">+{metrics['papers_change']} recent</div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -264,8 +302,6 @@ def render_section_card(title: str, content: str, icon: str, references: list = 
 
 def render_academic_paper_card(paper: dict):
     """Render an academic paper as a card"""
-    import re
-    
     # Extract paper details
     title = paper.get("title", "Untitled")
     authors = paper.get("authors", [])
@@ -284,42 +320,27 @@ def render_academic_paper_card(paper: dict):
     else:
         author_str = "Unknown authors"
     
-    # Clean abstract and convert markdown bold to HTML
+    # Clean abstract
     abstract_clean = abstract.replace('\n', ' ').strip()
     if len(abstract_clean) > 300:
         abstract_clean = abstract_clean[:297] + "..."
     
-    # Convert **text** to <strong>text</strong>
-    abstract_html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', abstract_clean)
-    
-    # Determine citation badge color
-    if citations > 100:
-        citation_color = "#28a745"
-    elif citations > 50:
-        citation_color = "#ffc107"
-    else:
-        citation_color = "#6c757d"
-    
-    st.markdown(f"""
-    <div class="academic-paper-card">
-        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
-            <h3 style="margin: 0; color: #0056b3; font-size: 1.1em; flex: 1;">
-                <a href="{url}" target="_blank" style="text-decoration: none; color: #0056b3;">
-                    {title}
-                </a>
-            </h3>
-            <span style="background-color: {citation_color}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold; margin-left: 10px; white-space: nowrap;">
-                📊 {citations} citations
-            </span>
+    # Create a clean card layout
+    with st.container():
+        st.markdown(f"""
+        <div style="padding: 1rem; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 1rem; background-color: white;">
+            <h4 style="margin-top: 0; color: #0056b3;">
+                <a href="{url}" target="_blank" style="text-decoration: none; color: #0056b3;">{title}</a>
+            </h4>
+            <p style="color: #6c757d; font-size: 0.9em; margin: 0.5rem 0;">
+                <strong>{author_str}</strong> • {year} • {source}
+            </p>
+            <p style="color: #495057; margin: 0.5rem 0;">{abstract_clean}</p>
+            <p style="color: #6c757d; font-size: 0.85em; margin: 0.5rem 0;">
+                📊 <strong>{citations}</strong> citations
+            </p>
         </div>
-        <div style="color: #6c757d; font-size: 0.9em; margin-bottom: 8px;">
-            <strong>Authors:</strong> {author_str} • <strong>Year:</strong> {year} • <strong>Source:</strong> {source}
-        </div>
-        <div style="color: #495057; font-size: 0.95em; line-height: 1.6;">
-            {abstract_html}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
 # === CORE FUNCTIONS WITH COST CONTROLS ===
 
@@ -451,54 +472,50 @@ def summarize_section(section_name, article_texts, article_links, article_titles
 
 
 def generate_academic_summary(papers_by_topic):
-    """Generate GPT summary of academic papers (with cost controls)"""
-    if not check_cost_limits():
-        return "Academic summary skipped due to cost limits."
+    """Generate a summary section for academic papers"""
+    if not papers_by_topic:
+        return "No recent academic papers found."
     
-    if not papers_by_topic or not any(papers_by_topic.values()):
-        return "No recent academic papers found for this period."
+    import re
     
-    # Compile papers info (limit to save tokens)
-    papers_text = ""
+    summary_parts = []
+    
     for topic, papers in papers_by_topic.items():
-        if papers:
-            papers_text += f"\n\n### {topic}:\n"
-            for paper in papers[:2]:  # Only top 2 per topic
-                papers_text += f"- {paper['title']} ({paper['year']}, {paper['citation_count']} citations)\n"
-    
-    prompt = f"""
-You are an academic research analyst. Summarize the key research themes and findings from recent academic papers.
-
-**Papers:**
-{papers_text[:3000]}
-
-**Provide:**
-1. **Research Highlights** (2-3 sentences on key developments)
-2. **Emerging Themes** (3-5 bullet points on common research directions)
-3. **Business Implications** (How these findings relate to consulting and financial services)
-
-Keep it concise and business-focused.
-    """
-    
-    try:
-        model = "gpt-3.5-turbo"  # Use cheaper model for academic summary
-        response = openai.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=COST_CONTROLS['temperature'],
-            max_tokens=800
-        )
+        if not papers:
+            continue
         
-        track_openai_usage(
-            model,
-            response.usage.prompt_tokens,
-            response.usage.completion_tokens,
-            "Academic Summary"
-        )
+        summary_parts.append(f"**{topic}:**")
+        summary_parts.append("")
         
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        return f"Error generating academic summary: {e}"
+        for paper in papers[:3]:  # Top 3 papers per topic
+            title = paper.get("title", "Untitled")
+            authors = paper.get("authors", [])
+            year = paper.get("year", "N/A")
+            citations = paper.get("citation_count", 0)
+            
+            # Format authors
+            if isinstance(authors, list) and len(authors) > 0:
+                if len(authors) > 3:
+                    author_str = f"{', '.join(authors[:3])}, et al."
+                else:
+                    author_str = ', '.join(authors)
+            else:
+                author_str = "Unknown authors"
+            
+            summary_parts.append(f"• **{title}**")
+            summary_parts.append(f"  *{author_str} ({year}) - {citations} citations*")
+            summary_parts.append("")
+    
+    summary_text = "\n".join(summary_parts)
+    
+    # Convert **text** to <strong>text</strong> for HTML rendering
+    summary_html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', summary_text)
+    # Convert *text* to <em>text</em> for italics
+    summary_html = re.sub(r'\*(.+?)\*', r'<em>\1</em>', summary_html)
+    # Convert line breaks to <br>
+    summary_html = summary_html.replace('\n', '<br>')
+    
+    return summary_html
 
 
 def calculate_kpi_metrics():
@@ -889,38 +906,59 @@ elif selected_section == "newsletter":
 
 # === SECTION: ACADEMIC PAPERS ===
 elif selected_section == "academic":
-    st.markdown("## 📚 Academic Insights")
+    st.markdown("## 📚 Recent Academic Papers")
+    st.markdown("---")
     
-    if 'academic_results' in st.session_state:
-        papers_by_topic = st.session_state['academic_results']
-        
-        # Generate summary
-        with st.spinner("Analyzing research papers..."):
-            summary = generate_academic_summary(papers_by_topic)
-            st.markdown(f"""
-            <div class="section-card">
-                <div class="section-header">
-                    <span class="section-icon">🧠</span>
-                    <h2 class="section-title">Research Highlights</h2>
-                </div>
-                <div class="section-content">
-                    {summary.replace(chr(10), "<br>")}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+    if 'academic_results' not in st.session_state or not st.session_state['academic_results']:
+        st.info("No academic papers available. Generate newsletter first.")
+    else:
+        # Add filters
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            selected_topics = st.multiselect(
+                "Filter by Topic",
+                options=list(st.session_state['academic_results'].keys()),
+                default=list(st.session_state['academic_results'].keys())
+            )
+        with col2:
+            sort_by = st.selectbox(
+                "Sort by",
+                options=["Citations (High to Low)", "Year (Recent First)", "Title (A-Z)"]
+            )
         
         st.markdown("---")
         
-        # Show papers by topic
-        for topic, papers in papers_by_topic.items():
-            if papers:
-                st.markdown(f"### {topic}")
-                st.markdown(f"*{len(papers)} recent papers*")
+        # Collect and sort papers
+        all_papers = []
+        for topic in selected_topics:
+            papers = st.session_state['academic_results'].get(topic, [])
+            for paper in papers:
+                paper_copy = paper.copy()
+                paper_copy['topic'] = topic
+                all_papers.append(paper_copy)
+        
+        # Sort papers
+        if sort_by == "Citations (High to Low)":
+            all_papers.sort(key=lambda x: x.get("citation_count", 0), reverse=True)
+        elif sort_by == "Year (Recent First)":
+            all_papers.sort(key=lambda x: x.get("year", 1900), reverse=True)
+        else:  # Title A-Z
+            all_papers.sort(key=lambda x: x.get("title", "").lower())
+        
+        if not all_papers:
+            st.info("No papers match the selected filters.")
+        else:
+            # Display papers by topic
+            for topic in selected_topics:
+                topic_papers = [p for p in all_papers if p.get('topic') == topic]
                 
-                for paper in papers:
-                    render_academic_paper_card(paper)
-                
-                st.markdown("---")
+                if topic_papers:
+                    st.markdown(f"### {topic}")
+                    
+                    for paper in topic_papers:
+                        render_academic_paper_card(paper)
+                    
+                    st.markdown("---")
 
 # === SECTION: TRENDS ===
 elif selected_section == "trends":
